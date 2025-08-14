@@ -1,0 +1,87 @@
+                        ## EJERCICIO 1 ##
+
+thread T1 : {                               thread T2 : {
+print ( " Hola " );                         print ( " Hola " );
+print ( " Pepe " );                         print ( " Jose " );
+}                                           }
+
+
+traza 1 = Hola (T1) -> Pepe (T1) -> Hola (T2) -> Jose (T2)
+traza 2 = Hola (T1) -> Hola (T2) -> Pepe (T1) -> Jose (T2)
+traza 3 = Hola (T1) -> Hola (T2) -> Jose (T2) -> Pepe (T1)
+traza 4 = Hola (T2) -> Hola (T1) -> Pepe (T1) -> Jose (T2)
+traza 5 = Hola (T2) -> Hola (T1) -> Jose (T2) -> Pepe (T1)
+traza 6 = Hola (T2) -> Jose (T2) -> Hola (T1) -> Pepe (T1)
+
+                    -------------------------
+                        ## EJERCICIO 2 ##
+
+a) global int x = 0;
+
+thread T1 : {                      thread T2 : {             
+int local = x ;                    int local = x ;               
+local = local + 1;                 local = local + 1;                  
+x = local ;                        x = local ;           
+}                                  }
+
+traza 1 = T1 completo antes que T2
+    T1: local = x (x=0)
+    T1: local = local+1 (local=1)
+    T1: x = local (x=1)
+    T2: local = x (x=1)
+    T2: local = local+1 (local=2)
+    T2: x = local (x=2)
+    → x final = 2
+
+traza 2 = T2 completo antes que T1
+    x final = 2
+
+traza 3 = en simultaneo
+    T1: local = x (x=0)
+    T2: local = x (x=0)
+    T1: local = local+1 (local=1)
+    T2: local = local+1 (local=1)
+    T1: x = local (x=1)
+    T2: x = local (x=1)
+    → x final = 1
+
+b) global int x = 0;
+
+thread T1 :                         thread T2 :
+x = x + 1;                          x = x + 1;
+
+traza 1 = T1 antes que T2
+    T1: temp = x (x=0)
+    T1: temp = temp+1 (temp=1)
+    T1: x = temp (x=1)
+    T2: temp = x (x=1)
+    T2: temp = temp+1 (temp=2)
+    T2: x = temp (x=2)
+    → x final = 2
+
+traza 2 : T2 antes que T1
+    x final = 2
+
+traza 3 = simultaneo
+    T1: temp = x (x=0)
+    T2: temp = x (x=0)
+    T1: temp = temp+1 (temp=1)
+    T2: temp = temp+1 (temp=1)
+    T1: x = temp (x=1)
+    T2: x = temp (x=1)
+    → x final = 1
+
+traza 4 = no ejecuta ningun 
+    x = 0 
+
+                    -------------------------
+                        ## EJERCICIO 3 ##
+
+global int x = 0;
+global int y = 0;
+
+thread T1 :
+y = x + 1;
+
+thread T2 :
+x = y + 1;                       
