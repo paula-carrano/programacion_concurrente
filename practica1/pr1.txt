@@ -106,4 +106,5 @@ T2: x = 1 [escribe]
 
 => x = 1 && y = 1
 
+ # existe una traza donde al final x = y = 1, si el hilo T2 lee y antes de que T1 escriba en y #
 

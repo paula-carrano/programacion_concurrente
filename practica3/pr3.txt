@@ -1,0 +1,69 @@
+TODAS LAS TRAZAS DEMOSTRADAS ESTAN EL ARCHIVO EXCEL.
+
+                                                            EJERCICIO 1
+
+
+a) Posibles valores de x = {1, 2, 3, 4, 5, 6} dependiendo del entrelazado. No se cumple mutex porque todos entran en el while por ser false.
+
+b) La operación no es atómica por lo que ambos pueden hacer que ocupado = True incumpliendo la propiedad de mutex. Generando starvation.
+
+c) Si son atómicas, entrar no tiene interleaving. Además garantiza que solo un thread logre entrar. El resto verá ocupado = true.
+
+                                        ----------------------------------------------------------
+                                                            EJERCICIO 2     
+
+global int actual = 0, turnos = 0;
+
+ PedirTurno() {                                 LiberarTurno() {
+    int turno = turnos;                            turnos = turnos -1;
+    turnos = turnos + 1;                        }
+    return turno;
+ }
+
+ // seccion no critica
+ miTurno = PedirTurno();
+ while (actual != miTurno);
+ // seccion critica
+ LiberarTurno();
+ // seccion no critica
+
+En ningún lado se incrementa la variable actual, se inicializa en 0 y nunca cambia.
+El while (actual != miTurno) depende de actual para permitir asignar al siguiente turno. Produciendo un deadlock.
+Además LiberarTurno() decrementa turnos, no actual. 
+
+MUTEX: podría cumplirse si miTurno == 0 , pero se da porque se produce un bloqueo del resto.
+
+GARANTIA DE ENTRADA: No se cumple porque los threads > 0 quedarían en loop generando un deadlock.
+
+                                        ----------------------------------------------------------
+                                                            EJERCICIO 3    
+tomarFlag(mia, otro) {
+    flags[mia] = !flags[otro];
+}
+
+global boolean[] flags = {false, false};
+
+thread { // threadId=0                                  thread { // threadId=1
+    while (!flags[0])                                         while (!flags[1]) 
+    tomarFlag(0,1);                                           tomarFlag(1,0);
+    // seccion critica                                         // seccion critica
+    flags[0] = false;                                         flags[1] = false;
+}                                                       }
+
+
+ A) tomarFlag NO ES ATÓMICA => 
+    
+    ** No se cumple MUTEX porque potencialmente podrían entrar juntas a SC.
+        Ambos threads pueden quedar flags[0] = true y  flags[1] = true; ya que tomarFlag() tiene que leer flags[otro] y luego calcular la negación y asignar en flags[mia]
+
+    ** No se cumple la garantia de entrada porque podría producirse un deadlock y nadie entra a la SC aunque este libre.
+        THREAD PROBADO EN ARCHIVO TRAZAS.
+
+ B) tomarFlag ES ATÓMICA
+    ** Se cumple MUTEX y GARANTIA DE ENTRADA porque no hay interleaving
+        Ejemplo: 
+        T0 = analiza la condición => flags[0] = !false = true -> (true, false)
+        T1 = analiza la condición => flags[1] = !true = false -> (true, false)
+        T0 sale del while, por ende entra al SC y T1 se queda esperando, garantizando que solo uno este dentro (MUTEX).
+        Cuando termina T0, flags[0] = false por lo que eventualmente entra en el SC. (GARANTIA DE ENTRADA)
+    
