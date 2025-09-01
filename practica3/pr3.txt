@@ -67,6 +67,8 @@ thread { // threadId=0                                  thread { // threadId=1
         T1 = analiza la condición => flags[1] = !true = false -> (true, false)
         T0 sale del while, por ende entra al SC y T1 se queda esperando, garantizando que solo uno este dentro (MUTEX).
         Cuando termina T0, flags[0] = false por lo que eventualmente entra en el SC. (GARANTIA DE ENTRADA)
+
+        
     
                                         ----------------------------------------------------------
                                                             EJERCICIO 4  
@@ -93,9 +95,44 @@ thread { // threadId=0                                  thread { // threadId=1
 
 MUTEX: porque mientras un thread esta en el SC, el shared.value = true por lo que el local.value = false. Y si entra otro thread, se queda esperando por el valor del shared.
 
-GARANTIA DE ENTRADA: no se cumple porque se produce starvation porque son una cantidad no acotada de threads.
+GARANTIA DE ENTRADA: Siempre algún thread entra: cuando shared=false, en el próximo Exchange alguien logrará llevarse false a su local y pasar al SC.
+Pero no está garantizado que todos entren. Supongamos cantidad no acotada de threads: puede pasar que el mismo thread (ej. T1) consiga reiteradamente el shared=false y entre muchas veces, dejando a otros (T2, T3, …) esperando para siempre.
+
 
                                         ----------------------------------------------------------
+                                                            EJERCICIO 5 
+global int ticket = 0;
+global int turn = 0;
+
+thread T1: {                                        thread T2 {
+    // NSC                                              // NSC
+    int myTurn = getTurn();   1                          int myTurn = getTurn();
+    while (myTurn != turn);                             while (myTurn != turn);
+    // SC                                               // SC
+    releaseTurn();                                      releaseTurn();
+    // NCS                                              // NCS
+}                                                   }
+
+getTurn() {                                     releaseTurn(){
+ return ticket++;                                   turn++;
+}                                               }
+
+
+a) getTurn () && releaseTurn () NO ATÓMICAS
+    MUTEX: No cumple porque ambos threads pueden obtener el mismo myTurn, cuando entra en getTurn() demostrado con la traza en el doc.
+
+    GARANTIA DE ENTRADA: Se cumple ya que ninguno queda bloqueado para siempre. 
+
+b) getTurn() && releaseTurn () SON ATOMICAS
+    MUTEX: Se cumple porque es como fetchAndAdd()
+
+    GARANTIA: se cumple porque cuando una sale del SC incrementa el turn, haciendo que eventualmente el otro thread pueda ingresar.
+
+c) Sí, pero se tiene que tener en consideración la memoria para almacenar los threads y un riesgo de overflow.
+
+d) Sí, puede cambiar y romperla porque comenzaría a tener tickets (0..255) de manera ciclica, produciendo duplicidades en myTurn ó generando entradas prematuras.
+
+                                        -----------------------------------------------------------
                                                             EJERCICIO 6 => n threads // APLICA A N THREADS O ACOTADOS
 global int[] queue = new int[ n ]; // [1,2,3]
 
@@ -123,3 +160,57 @@ T2 => while (2 != 1)    => true
 MUTEX: si cumple 
 
 GARANTIA DE ENTRADA: si se cumple es como en fetchAndAdd()
+
+                                        -----------------------------------------------------------
+                                                            EJERCICIO 7  => N threads
+
+ global LLSC lock = new LLSC(false,-1);
+
+    thread {
+        //Seccion No Critica
+        LLSC local;
+        do {
+            do { local = lock.loadLink(); }
+            while (local.flag);
+        } while (!lock.storeConditional(local, true));
+        //Seccion Critica
+        lock.reset();
+        //Seccion No Critica
+    }
+
+   
+    class LLSC {
+        private boolean flag;           // false
+        private long timestamp;         //-1
+
+        public LLSC(boolean flag, long timestamp) {
+        this.flag = flag;
+        this.timestamp = timestamp;
+        }
+
+        public LLSC loadLink() {
+            this.timestamp = System.currentTimeMillis();     //NUNCA DEVUELVE EL MISMO VALOR
+            return new LLSC(this.flag, this.timestamp);
+        }
+
+        public boolean storeConditional(LLSC other, boolean value) {
+            if (this.timestamp != other.timestamp)
+                return false;
+            this.flag = value;
+            return true;
+        }
+
+        public void reset() {
+            this.flag = false;
+        }
+ }
+
+ a) NO SE CUMPLE MUTEX : porque en loadLink() se crea un nuevo objeto LLSC con copia de flag y un timestamp propio, haciendo que nunca coincida con lock.timestamp
+    Entonces el chequeo en storeConditional (this.timestamp != other.timestamp) falla porque otros threads pueden "colarse" antes de que se ejecute el lock.reset() 
+
+ b) NO SE CUMPLE GARANTIA DE ENTRADA: 
+        Con cada llamada al loadLink() cambia el lock.timestamp, e invalida cualquier storeConditional() de los demás produciendo deadlock 
+
+ c) loadLink && storeConditional SON ATOMICAS:
+    No cambia porque el problema esta en la logica del timestamp que hace que un storeConditional siempre invalide a otro, porque cada loadLink() cambia el timestamp global.
+    Haciendo que no se cumpla ni mutex ni la garantia de entrada. 
