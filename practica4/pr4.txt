@@ -1,0 +1,105 @@
+                                            -------- EJERCICIO 1 --------
+
+global Semaphore sAF = new Semaphore (0);
+global Semaphore sAC = new Semaphore (0);
+
+thread {
+    print ("A");
+    sAF.release();
+    print ("B");
+    sAC.acquire();
+    print ("C");
+}
+
+thread {
+    print ("E");
+    sAF.acquire();
+    print ("F");
+    sAC.release();
+    print ("G");
+}
+
+                                            -------- EJERCICIO 2 --------
+
+global Semaphore sAC = new Semaphore (0);
+global Semaphore sAR = new Semaphore (0);
+global Semaphore sAO = new Semaphore (0);
+
+
+thread {
+    sAC.acquire()
+    print ("c");
+    sAR.release()
+    print ("E");
+    sAO.release()
+}
+
+thread {
+    print ("A");
+    sAC.release()
+    sAR.acquire()
+    print ("R");
+    sAO.acquire()
+    print ("O");
+}
+
+                                            -------- EJERCICIO 3 --------
+
+Semaphore sI  = new Semaphore (0);
+Semaphore sO  = new Semaphore (0);
+Semaphore sOK = new Semaphore (0); 
+
+
+ thread {                          
+    sI.release();     //desbloquea I             
+    print("R");     
+    sO.release();     //desbloquea O                                                                                                   
+    sOK.acquire();                          
+    print("OK");                           
+ }                                 
+
+thread {
+    sI.acquire();
+    print ("I");
+    sOK.acquire();
+    print("OK");
+}
+
+thread {
+    sO.acquire();
+    print("O");
+    repeat (3){
+        sOK.release(); //libero los 3 OK
+    }
+    sOK.acquire();
+    print("OK");
+}
+
+
+                                            -------- EJERCICIO 4 --------
+
+
+ thread
+    while (true) {
+        print(’A’);
+        print(’B’);
+        print(’C’);
+        print(’D’);
+}
+
+thread
+    while (true) {
+        print(’E’);
+        print(’F’);
+        print(’G’);
+}
+
+thread
+    while (true) {
+        print(’H’);
+        print(’I’);
+}
+
+#"F" <= #"A"
+#"H" <= #"E"
+#"C" <= #"G"

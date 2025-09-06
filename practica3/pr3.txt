@@ -212,5 +212,5 @@ GARANTIA DE ENTRADA: si se cumple es como en fetchAndAdd()
         Con cada llamada al loadLink() cambia el lock.timestamp, e invalida cualquier storeConditional() de los demás produciendo deadlock 
 
  c) loadLink && storeConditional SON ATOMICAS:
-    No cambia porque el problema esta en la logica del timestamp que hace que un storeConditional siempre invalide a otro, porque cada loadLink() cambia el timestamp global.
-    Haciendo que no se cumpla ni mutex ni la garantia de entrada. 
+        Mutex SÍ se cumple → en el modelo real de LL/SC, cuando un thread hace loadLink, el hardware “vigila” esa celda de memoria, y storeConditional solo tiene éxito si nadie más la modificó en el medio. Esto evita que dos threads hagan un storeConditional exitoso simultáneamente.
+        Garantía de entrada NO se cumple → porque el hardware puede forzar fallas espurias de storeConditional (incluso si nadie modificó la celda), y no hay ningún mecanismo en el algoritmo que asegure que un thread no sea retrasado indefinidamente.
