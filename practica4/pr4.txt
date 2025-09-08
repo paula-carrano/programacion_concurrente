@@ -77,12 +77,16 @@ thread {
 
 
                                             -------- EJERCICIO 4 --------
-
+global Semaphore semF= new Semaphore(0)
+global Semaphore semH= new Semaphore(0)
+global Semaphore semC= new Semaphore(0)
 
  thread
     while (true) {
         print(’A’);
+        semF.release(); //imprime F
         print(’B’);
+        semC.acquire(); //espera #c <= #g
         print(’C’);
         print(’D’);
 }
@@ -90,12 +94,16 @@ thread {
 thread
     while (true) {
         print(’E’);
+        semH.release(); //imprime H
+        semF.acquire(); // espera #f <= #a 
         print(’F’);
         print(’G’);
+        semC.release(); // permite a C
 }
 
 thread
     while (true) {
+        semH.acquire(); // espera a #h <= #e
         print(’H’);
         print(’I’);
 }
@@ -103,3 +111,194 @@ thread
 #"F" <= #"A"
 #"H" <= #"E"
 #"C" <= #"G"
+
+                                            -------- EJERCICIO 5 --------
+global Semaphore mutex = new Semaphore (1)
+global int x=0;
+
+thread T1: {
+    mutex.acquire();
+    x = x+1;
+    mutex.release();
+}
+
+thread T2: {
+    mutex.acquire();
+    x = x+2;
+    mutex.release();
+}
+
+thread T3: {
+    mutex.acquire();
+    x = x+3;
+    mutex.release();
+}
+
+                                            -------- EJERCICIO 6 --------
+
+global int y=0, z = 0;
+
+thread {
+    int x;
+    x = y + z;
+}
+
+thread {
+    y = 1;
+    z = 2;
+}
+
+a) Valores: 0,1,2,3
+
+    traza 1
+    T1          | T2   | Estado
+    x = y + z   |      | y = 0, z = 0
+    x = 0 + 0   |      | x = 0
+                |y , z | y=1, z =2 
+
+    traza 2
+    T1          | T2   | Estado
+                | y    | y =1
+                | z    | z =2
+    x = y +z    |      | y =1, z =2, x=0    
+    x = 1 + 2   |      | x = 3               
+
+    traza 3
+    T1          | T2   | Estado
+                | y    | y =1
+    x = y +z    |      | y =1, z =0, x=0    
+    x = 1 + 0   |      | x = 1
+
+    traza 4
+    T1          | T2   | Estado
+                | z    | z =2
+    x = y +z    |      | y =0, z =2, x=0    
+    x = 0 + 2   |      | x = 2
+
+
+
+b) ** Donde x = 0
+        global Semaphore sem= new Semaphore (0)
+        global int y=0, z = 0;
+
+        thread {
+            int x;
+            x = y + z;
+            sem.release(); // indica que termino 
+        }
+
+        thread {
+            sem.acquire(); // espera a que T1 termine
+            y = 1;
+            z = 2;
+        }
+
+    ** Donde x = 1
+        global Semaphore semY = new Semaphore(0)   // controla cuando T1 puede leer y
+        global int y=0, z = 0;
+
+        thread {
+            semY.acquire();  
+            int x;
+            x = y + z;
+        }
+
+        thread {
+            y = 1;
+            semY.release();
+            z = 2;
+        }
+
+    ** Donde x = 2
+
+
+    ** Donde x = 3
+        global Semaphore sem= new Semaphore (0)
+        global int y=0, z = 0;
+
+        thread {
+            sem.acquire();  // espera a T2
+            int x;
+            x = y + z;
+        }
+
+        thread {
+            y = 1;
+            z = 2;
+            sem.release(); // permito que T1 ejecute
+        }
+
+                                            -------- EJERCICIO 7 --------
+
+thread
+    while (true)
+        print ("A");
+
+
+thread 
+    while (true)
+        print ("B");
+
+
+a) #A - #B <= 1
+
+global Semaphore semA= new Semaphore (1);
+global Semaphore semB= new Semaphore (1);
+
+thread{
+    while (true){
+        semA.acquire();
+        print ("A");
+        semB.release()
+    }
+}
+
+thread {
+    while (true){
+        semB.acquire();
+        print ("B");
+        semA.release();
+    }
+}
+
+b) salida ABABABAB... 
+global Semaphore semA= new Semaphore (1);
+global Semaphore semB= new Semaphore (0);
+
+thread{
+    while (true){
+        semA.acquire();
+        print ("A");
+        semB.release()
+    }
+}
+
+thread {
+    while (true){
+        semB.acquire();
+        print ("B");
+        semA.release();
+    }
+}
+
+c) salida ABBABBABB..
+global Semaphore semA  = new Semaphore (1);
+global Semaphore semB  = new Semaphore (0);
+
+thread{
+    while (true){
+        semA.acquire();
+        print ("A");
+        semB.release()
+    }
+}
+
+thread {
+    while (true){
+        repeat (2){
+            semB.acquire();
+            print ("B");
+        }
+        semA.release();
+    }
+}
