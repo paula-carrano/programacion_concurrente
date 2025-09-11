@@ -1,0 +1,177 @@
+-------- EJERCICIO 1 --------
+A) ESQUEMA BASICO
+
+global int suma = 0
+global int impar
+global int i = 1
+global int N // Debe inicializarse antes de lanzar los hilos
+
+Semaphore puedoGenerar = new Semaphore(1)  //Permite entrar en la primera al generador
+Semaphore puedoAcumular = new Semaphore(0) // bloquea al acumulador
+
+thread generador{
+    while(true) {
+        puedoGenerar.acquire()              // pide permiso para "producir"
+        if (i > N){                         // Si i > N entonces termino de "producir"
+            impar = -1                      // uso sentinel para marcar el "fin de producción"
+            puedoAcumular.release()         // Intenta "despertar" al acumulador
+            return
+        }
+        impar = i
+        i = i + 1                           // incrementa i para la proxima producción
+        puedoAcumular.release()             // indica al acumulador que hay dato para listo.
+    }
+}
+
+thread acumulador {
+    while(true) {
+        puedoAcumular.acquire()             // espera hasta que haya algo para consumir
+        if (impar == -1) return             // ya no hay más datos
+        int valor = 2 * impar - 1
+        suma = suma + valor
+        puedoGenerar.release()
+    }
+}
+
+B)
+    I. ESQUEMA CON MULTIPLES THREADS GENERADOR
+
+global Object[] colaImpares = new Object[N]
+global int N
+global int suma            = 0
+global int indiceLectura   = 0
+global int indiceEscritura = 0
+global int siguienteImpar  = 1       // próximo impar a generar
+global int NUM_ACUMULADORES         // Debe definirse según la cantidad de acumuladores
+
+Semaphore accesoCola = new Semaphore(1)         // protege la cola
+Semaphore espaciosLibres = new Semaphore(N)     // espacios disponibles en la cola
+Semaphore datosDisponibles = new Semaphore(0)   // cantidad de impares listos
+
+thread generador {
+    while (true) {
+        espaciosLibres.acquire()
+        accesoCola.acquire()
+            if (siguienteImpar > N) {
+                // PonEMOS un sentinel por cada acumulador
+                for (int k = 0; k < NUM_ACUMULADORES; k++) {
+                    colaImpares[indiceEscritura] = -1
+                    indiceEscritura = (indiceEscritura + 1) mod N
+                    datosDisponibles.release()
+                }
+                accesoCola.release()
+                return
+            }
+            colaImpares[indiceEscritura] = siguienteImpar
+            indiceEscritura = (indiceEscritura + 1) mod N
+            siguienteImpar = siguienteImpar + 1
+        accesoCola.release()
+        datosDisponibles.release()
+    }
+}
+
+thread acumulador {
+    while (true) {
+        datosDisponibles.acquire()      // espera que haya dato
+        accesoCola.acquire()            // acceso exclusivo a la cola
+            int valor = colaImpares[indiceLectura]
+            indiceLectura = (indiceLectura + 1) mod N
+        accesoCola.release()
+        espaciosLibres.release()        // libera espacio en la cola
+
+        if (valor == -1) return        // fin de producción
+
+        suma = suma + (2 * valor - 1)
+    }
+}
+
+ ####   II. ESQUEMA CON MULTIPLES THREADS ACUMULADOR   ####
+
+global Object[] colaImpares = new Object[N]
+global int N
+global int suma             = 0
+global int indiceLectura    = 0
+global int indiceEscritura  = 0
+global int siguienteImpar   = 1       // próximo impar a generar
+global int NUM_ACUMULADORES         // Debe definirse según la cantidad de acumuladores
+
+Semaphore accesoCola       = new Semaphore(1)
+Semaphore espaciosLibres   = new Semaphore(N)
+Semaphore datosDisponibles = new Semaphore(0)
+Semaphore accesoSuma       = new Semaphore(1)     // protege la suma cuando hay múltiples acumuladores
+
+thread generador {
+    while (true) {
+        espaciosLibres.acquire()
+        accesoCola.acquire()
+            if (siguienteImpar > N) {
+                // Se pone un sentinel por cada acumulador
+                for (int k = 0; k < NUM_ACUMULADORES; k++) {
+                    colaImpares[indiceEscritura] = -1
+                    indiceEscritura = (indiceEscritura + 1) mod N
+                    datosDisponibles.release()
+                }
+                accesoCola.release()
+                return
+            }
+            colaImpares[indiceEscritura] = siguienteImpar
+            indiceEscritura = (indiceEscritura + 1) mod N
+            siguienteImpar += 1
+        accesoCola.release()
+        datosDisponibles.release()
+    }
+}
+
+thread acumulador {
+    while (true) {
+        datosDisponibles.acquire()
+        accesoCola.acquire()
+            int valor = colaImpares[indiceLectura]
+            indiceLectura = (indiceLectura + 1) mod N
+        accesoCola.release()
+        espaciosLibres.release()
+
+        if (valor == -1) return
+
+        accesoSuma.acquire()
+            suma = suma + (2 * valor - 1)
+        accesoSuma.release()
+    }
+}
+
+-------- EJERCICIO 2 --------
+
+A) Trasbordo simple
+
+global Object[] colaPersonas = new Object[N]
+Semaphore espaciosLibres     = new Semaphore(N)
+Semaphore personasEsperando  = new Semaphore(0)
+Semaphore accesoACola        = new Semaphore(1)
+global int indiceL = 0
+global int indiceE = 0
+
+thread transbordador {
+    while(true){
+        personasEsperando.acquire();
+        accesoACola.acquire();
+        id = colaPersonas[indiceL];
+        indiceL = (indiceL + 1) mod N;
+        accesoACola.release();
+
+        cruzarRio();                 // simula el cruce
+        bajarPersona(id);            // simula que la persona baja
+        regresar();                  // simula el regreso
+
+        espaciosLibres.release();
+    }
+}
+
+thread persona {
+    espaciosLibres.acquire();
+    accesoACola.acquire();
+        colaPersonas[indiceE] = id;
+        indiceE = (indiceE + 1) mod N;
+    accesoACola.release();
+
+    personasEsperando.release();
+}
