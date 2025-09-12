@@ -182,7 +182,7 @@ B) TRASLADO DE OESTE A ESTE (Barco zarpa con menos de N pasajeros)
 
 global int N
 global int personasEnBarco = 0
-global int CostaActual     = 0   // 0 = Oeste && 1 = Este
+global int CostaActual     = 0          // 0 = Oeste && 1 = Este
 global int esperandoEnCosta[2] = {0, 0} // cantidad de pasajeros esperando en cada costa
 
 Semaphore mutexBarco    = new Semaphore(1)                          // protege personasEnBarco y costaActual
@@ -240,4 +240,14 @@ thread persona(id, costaInicial) {
         viajeTerminado.release()
         costaInicial = 1 - costaInicial
     }
+}
+
+-------- EJERCICIO 3 --------
+
+global int TOTAL_DISCOS      = 20;
+global Semaphore discos      = new Semaphore(totalDeDiscos)
+global Semaphore aparatos[4] = { new Semaphore(1), new Semaphore(1), new Semaphore(1), new Semaphore(1) }
+
+thread Cliente {
+        // se puede usar foreach??!
 }
