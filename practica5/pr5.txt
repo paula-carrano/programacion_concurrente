@@ -175,3 +175,69 @@ thread persona {
 
     personasEsperando.release();
 }
+
+
+
+B) TRASLADO DE OESTE A ESTE (Barco zarpa con menos de N pasajeros)
+
+global int N
+global int personasEnBarco = 0
+global int CostaActual     = 0   // 0 = Oeste && 1 = Este
+global int esperandoEnCosta[2] = {0, 0} // cantidad de pasajeros esperando en cada costa
+
+Semaphore mutexBarco    = new Semaphore(1)                          // protege personasEnBarco y costaActual
+Semaphore puedenSubir[2]= [new Semaphore(0), new Semaphore(0)]      // por costa
+Semaphore puedenBajar   = new Semaphore(0)                          // permite bajar cuando el barco amarra
+Semaphore viajeTerminado= new Semaphore(0)                          // sinc el fin del viaje
+Semaphore zarpar        = new Semaphore(0)                          // indica que el barco puede zarpar
+
+thread transbordador {
+    while (true) {
+        mutexBarco.acquire()
+            int pasajerosSuben = min(N, esperandoEnCosta[CostaActual])
+            for (int i = 0; i < pasajerosSuben; i++)
+                puedenSubir[CostaActual].release()
+        mutexBarco.release()
+
+        // Espera a que suban todos los que pueden
+        for (int i = 0; i < pasajerosSuben; i++)
+            viajeTerminado.acquire()
+
+        cruzarRio()
+        CostaActual = 1 - CostaActual
+
+        for (int i = 0; i < personasEnBarco; i++)
+            puedenBajar.release()
+
+        for (int i = 0; i < personasEnBarco; i++)
+            viajeTerminado.acquire()
+
+        // Reinicia el contador de personas en el barco
+        personasEnBarco = 0
+    }
+}
+
+thread persona(id, costaInicial) {
+    while (true) {
+        mutexBarco.acquire()
+            esperandoEnCosta[costaInicial] = esperandoEnCosta[costaInicial] + 1
+        mutexBarco.release()
+
+        puedenSubir[costaInicial].acquire()
+
+        mutexBarco.acquire()
+            personasEnBarco = personasEnBarco + 1
+            esperandoEnCosta[costaInicial] = esperandoEnCosta[costaInicial] - 1
+        mutexBarco.release()
+
+        viajeTerminado.release()
+        puedenBajar.acquire()
+
+        mutexBarco.acquire()
+            personasEnBarco = personasEnBarco - 1
+        mutexBarco.release()
+
+        viajeTerminado.release()
+        costaInicial = 1 - costaInicial
+    }
+}
