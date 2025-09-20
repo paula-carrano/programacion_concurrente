@@ -1,0 +1,39 @@
+
+Mutex: no hay dos threads en simultaneo
+garantia de entrada: eventualmente entra.
+
+## rango de ID: [0,N]
+
+global unsigned int[] turnos = new int[N];
+global unsigned short siguiente = 0;
+global unsigned short actual = 1;
+
+bool entrar(int id) {
+  if (turnos[id] == 0)
+    turnos[id] = ++siguiente;
+  return turnos[id] != actual;
+}
+
+void salir() {
+  actual++;
+}
+
+thread(id) {
+  // SECCION NO CRITICA
+  while (entrar(id));
+  // SECCION CRITICA
+  salir(id);
+  turnos[id] = 0;
+  // SECCION NO CRITICA
+}
+
+## NO SON ATOMICAS: 
+    * MUTEX : no vale No. Como las operaciones ++siguiente y actual++ no son atómicas, pueden ocurrir condiciones de carrera. Dos threads pueden obtener el mismo ticket o perder incrementos, lo que permite que dos entren a la sección crítica simultáneamente.
+    * GARANTIA DE ENTRADA: No. Como actual++ no es atómico, un incremento puede perderse. Esto puede dejar a algunos threads esperando indefinidamente aunque les corresponda entrar.
+
+## SI SON ATOMICAS:
+    *MUTEX:Si siempre que N sea acotado a N < 2.16. El algoritmo funciona como un ticket lock: cada thread recibe un ticket único (por ++siguiente) y entra cuando su ticket coincide con actual.
+    *GARANTIA DE ENTRADA: Si siempre que N sea acotado a N < 2.16. Cada vez que alguien sale, incrementa actual, habilitando al siguiente en orden de llegada. Nadie se queda esperando indefinidamente porque los tickets son atendidos en orden FIFO.
+Para N >=2.16 se puede producir overflow por la capacidad computacional de tu equipo.
+
+------------------------------------- EJERCICIO 2

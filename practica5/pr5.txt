@@ -141,113 +141,228 @@ thread acumulador {
 
 -------- EJERCICIO 2 --------
 
-A) Trasbordo simple
-
-global Object[] colaPersonas = new Object[N]
-Semaphore espaciosLibres     = new Semaphore(N)
-Semaphore personasEsperando  = new Semaphore(0)
-Semaphore accesoACola        = new Semaphore(1)
-global int indiceL = 0
-global int indiceE = 0
+Semaphore permisoAbordar = new Semaphore(0,True)
+Semaphore asientoOcupado = new Semaphore(0)
+Semaphore permisoBajar = new Semaphore(0)
+Sempahore permisoVolver = new Semaphore(0) 
 
 thread transbordador {
-    while(true){
-        personasEsperando.acquire();
-        accesoACola.acquire();
-        id = colaPersonas[indiceL];
-        indiceL = (indiceL + 1) mod N;
-        accesoACola.release();
-
-        cruzarRio();                 // simula el cruce
-        bajarPersona(id);            // simula que la persona baja
-        regresar();                  // simula el regreso
-
-        espaciosLibres.release();
-    }
+	while (true){
+		permisoAbordar.release()
+		asientoOcupado.acquire()
+		// navegar 
+		permisoBajar.release();
+		// regresar
+		permisoVolver.acquire();
+	}
 }
 
 thread persona {
-    espaciosLibres.acquire();
-    accesoACola.acquire();
-        colaPersonas[indiceE] = id;
-        indiceE = (indiceE + 1) mod N;
-    accesoACola.release();
-
-    personasEsperando.release();
+	while(true){
+		permisoAbordar.acquire();
+		// subir
+		asientoOcupado.release();
+		permisoBajar.acquire();
+		// bajar
+		permisoVolver.release();
+	}
 }
 
 
+---------- B--------------------
 
-B) TRASLADO DE OESTE A ESTE (Barco zarpa con menos de N pasajeros)
-
-global int N
-global int personasEnBarco = 0
-global int CostaActual     = 0          // 0 = Oeste && 1 = Este
-global int esperandoEnCosta[2] = {0, 0} // cantidad de pasajeros esperando en cada costa
-
-Semaphore mutexBarco    = new Semaphore(1)                          // protege personasEnBarco y costaActual
-Semaphore puedenSubir[2]= [new Semaphore(0), new Semaphore(0)]      // por costa
-Semaphore puedenBajar   = new Semaphore(0)                          // permite bajar cuando el barco amarra
-Semaphore viajeTerminado= new Semaphore(0)                          // sinc el fin del viaje
-Semaphore zarpar        = new Semaphore(0)                          // indica que el barco puede zarpar
+Semaphore permisoAbordar = new Semaphore(0,True)[2]
+Semaphore asientoOcupado = new Semaphore(0)
+Semaphore permisoBajar = new Semaphore(0)
+Sempahore permisoVolver = new Semaphore(0) 
 
 thread transbordador {
-    while (true) {
-        mutexBarco.acquire()
-            int pasajerosSuben = min(N, esperandoEnCosta[CostaActual])
-            for (int i = 0; i < pasajerosSuben; i++)
-                puedenSubir[CostaActual].release()
-        mutexBarco.release()
-
-        // Espera a que suban todos los que pueden
-        for (int i = 0; i < pasajerosSuben; i++)
-            viajeTerminado.acquire()
-
-        cruzarRio()
-        CostaActual = 1 - CostaActual
-
-        for (int i = 0; i < personasEnBarco; i++)
-            puedenBajar.release()
-
-        for (int i = 0; i < personasEnBarco; i++)
-            viajeTerminado.acquire()
-
-        // Reinicia el contador de personas en el barco
-        personasEnBarco = 0
-    }
+	costa = 0
+while(true){
+	Repeat N:
+		permisoAbordar.[costa].release()
+	Repeat N:
+		asientoOcupado.acquire()
+	costa= costa +1 % 2;
+	// navegar 
+	Repeat N:
+		permisoBajar.release();
+	// regresar
+	Repeat N:
+		permisoVolver.acquire();
+}
 }
 
-thread persona(id, costaInicial) {
-    while (true) {
-        mutexBarco.acquire()
-            esperandoEnCosta[costaInicial] = esperandoEnCosta[costaInicial] + 1
-        mutexBarco.release()
-
-        puedenSubir[costaInicial].acquire()
-
-        mutexBarco.acquire()
-            personasEnBarco = personasEnBarco + 1
-            esperandoEnCosta[costaInicial] = esperandoEnCosta[costaInicial] - 1
-        mutexBarco.release()
-
-        viajeTerminado.release()
-        puedenBajar.acquire()
-
-        mutexBarco.acquire()
-            personasEnBarco = personasEnBarco - 1
-        mutexBarco.release()
-
-        viajeTerminado.release()
-        costaInicial = 1 - costaInicial
-    }
+thread persona(int costa) {
+		permisoAbordar.[costa].acquire();
+		// subir
+		asientoOcupado.release();
+		permisoBajar.acquire();
+		// bajar
+		permisoVolver.release();
 }
 
--------- EJERCICIO 3 --------
+C) Trasbordo subir/bajar concurrentemente
 
-global int TOTAL_DISCOS      = 20;
-global Semaphore discos      = new Semaphore(totalDeDiscos)
-global Semaphore aparatos[4] = { new Semaphore(1), new Semaphore(1), new Semaphore(1), new Semaphore(1) }
+Semaphore permisoAbordar = new Semaphore(0,True)[2]
+Semaphore asientoOcupado = new Semaphore(0)
+Semaphore permisoBajar = new Semaphore(0)
+Sempahore permisoVolver = new Semaphore(0) 
+Semaphore asiento = new Semaphore(N)
 
-thread Cliente {
-        // se puede usar foreach??!
+thread transbordador {
+	costa = 0
+	while(true){
+		permisoAbordar.[costa].release(N)
+
+		asientoOcupado.acquire(N)
+
+		costa= costa +1 % 2;
+
+		// navegar 
+
+		permisoBajar[costa].release(N);
+
+		// regresar
+	}
+}
+
+thread persona(int costa) {
+		permisoAbordar.[costa].acquire();
+        asiento.acquire();
+		// subir
+		asientoOcupado.release();
+		permisoBajar.[costa +1 % 2].acquire();
+		// bajar
+        asiento.release();
+}
+
+
+--------------  ejercicio 3
+
+Semaphore maquina[] = new Semaphore[4]; // {1,1,1,1} FUERTE 
+Semaphore discos    = new Semaphore(20); 
+Semaphore mutexDiscos = new Semaphore(1);  FUERTE
+
+
+thread Persona(List<int,int> rutina):{
+
+
+	for (nromaq,cantDiscos in rutina) {
+		mutexDiscos.acquire();
+
+		repeat(cantDiscos) {
+			discos.acquire();
+		}
+		mutexDiscos.release();			// va aca para proteger los discos
+
+		maquina[nromaq].acquire();
+
+		//hace ejercicio
+
+		maquina[nromaq].release();
+		repeat(cantDiscos) {
+			discos.release();
+		}
+	}
+}
+
+----------------------- ejercicio 4 
+
+
+int maquinaDisponible; 				//BUFFER
+Semaphore puedeAnunciarse   = new Semaphore(1); //FUERTE
+Semaphore puedeTomarMaquina = new Semaphore(0); //FUERTE
+Semaphore ropaCargada[]     = new Semaphore[k];
+Semaphore mensajeEnviado[]  = new Semaphore[K];
+Semaphore ropaRetirada[]    = new Semaphore[K];
+
+thread Maquina(id): {
+	
+	while (true){
+		puedeAnunciarse.acquire();
+		maquinaDisponible = id;
+		puedeTomarMaquina.release();
+		ropaCargada[id].acquire();
+
+		//LAVAR
+		//ENVIAR MENSAJE
+		mensajeEnviado[id].release();
+		ropaRetirada[id].acquire();
+	}
+
+}
+
+
+thread Persona: {
+
+	int miMaquina;
+	puedeTomarMaquina.acquire();
+	miMaquina = maquinaDisponible;
+	puedeAnunciarse.release();
+
+	//CARGAR ROPA en miMaquina;
+	ropaCargada[miMaquina].release();
+	// SE VA DE COMPRAS
+	mensajeEnviado[miMaquina].acquire();
+	//RETIRA LA ROPA
+	ropaRetirada[miMaquina].release();
+	//SE VA
+
+}
+
+
+----------------------- ejercicio 5 
+
+
+
+
+
+------------------------ejercicio 6
+
+--A
+
+Semaphore[]  accesoACancha= new Semaphore[2]: {1,1}
+
+
+thread Persona(int equipo) {
+	equipoOpuesto = (equipo +1) % 2;
+	accesoALaCancha[equipo].acquire();
+	//ENTRA A LA CANCHA
+	accesoALaCancha[equipoOpuesto].release();
+	//MIRAR PARTIDO
+}
+
+
+--B
+
+Semaphore[]  accesoACancha= new Semaphore[2]: {1,1}
+int capacidadCancha = N;
+Semaphore mutexAcceso = new Semaphore(1);
+
+
+thread Persona(int equipo) {
+	equipoOpuesto = (equipo +1) % 2;
+	accesoALaCancha[equipo].acquire();
+
+	mutexAcceso.acquire();
+
+	if (capacidadCancha > 0){ 
+	
+		capacidadCancha--;
+		mutexAcceso.release();
+
+		//ENTRA A LA CANCHA
+		accesoALaCancha[equipoOpuesto].release();
+
+		if(capacidadCancha == 0) {
+		accesoALaCancha[miEquipo].release();
+		}
+		//MIRAR PARTIDO
+	}
+	else {
+		mutexAcceso.release();
+		accesoALaCancha[miEquipo].release();
+		//VOLVER A CASA
+	}
 }

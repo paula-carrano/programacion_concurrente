@@ -210,7 +210,7 @@ b) ** Donde x = 0
         }
 
     ** Donde x = 2
-
+        USAR VARIABLE LOCAL en z thread 2
 
     ** Donde x = 3
         global Semaphore sem= new Semaphore (0)
@@ -240,7 +240,7 @@ thread
         print ("B");
 
 
-a) #A - #B <= 1
+a) #A - #B <= 1       //split mutex: 
 
 global Semaphore semA= new Semaphore (1);
 global Semaphore semB= new Semaphore (1);
@@ -289,7 +289,8 @@ thread{
     while (true){
         semA.acquire();
         print ("A");
-        semB.release()
+        semB.release();
+        semB.release();
     }
 }
 
@@ -299,6 +300,25 @@ thread {
             semB.acquire();
             print ("B");
         }
+        semA.release();
+    }
+}
+
+------------------ Solución de Fran ------------------
+
+thread{
+    while (true){
+        semA.acquire();
+        semA.acquire();
+        print ("A");
+        semB.release();
+        semB.release();
+    }
+}
+
+thread {
+    while (true){
+            semB.acquire();
         semA.release();
     }
 }
