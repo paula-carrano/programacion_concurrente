@@ -1,0 +1,167 @@
+a)
+Semaphore estaciones[]        = new Semaphore[5+1] :{1,1,1,1,1} // FUERTE
+Semaphore permisoLavar[5]     = new Semaphore();
+Semaphore permisoAvanzar[5]   = new Semaphore();
+
+thread Maquina(id) {
+    while(true){
+        permisoLavar[id].acquire();
+
+        // LAVAR
+
+        permisoAvanzar[id].release();
+    }
+}
+
+
+thread Auto {
+
+    estacion[0].acquire();
+    //IR ESTACION 0
+
+        for i in range(5){
+        permisoLavar[i].release();
+        permisoAvanzar.[i].acquire();
+
+        estaciones[i+1].acquire();
+        //IR A ESTACION I +1
+        estaciones[i].release();
+    }
+    estaciones[5].release();
+}
+
+b) CON ROBOTS
+int ropaRetirada;
+Semaphore estaciones[]        = new Semaphore[7+1] :{1,1,1,1,1}
+Semaphore permisoRobot        = new Semaphore(0);
+Semaphore robotListo          = new Semaphore(0);
+Semaphore robotBajado[6];
+Semaphore permisoSubir[6];
+Semaphore robotSubido[6];
+Semaphore permisoLavar[5];     
+Semaphore permisoAvanzar[5];
+Semaphore permisoBajar[6];
+
+
+thread Maquina(id) {
+    while(true){
+        permisoLavar[id].acquire();
+    
+        // LAVAR
+
+        permisoAvanzar[id].release();
+    }
+}
+
+
+thread Auto {
+    estacion[0].acquire();
+    //IR ESTACION 0
+    permisoRobot.release();
+    robotListo.acquire();
+    
+    miRobot = Rid;
+    permisoSubir[miRobot].release();
+    robotSubid[miRobot].acquire();
+    estacion[1].acquire();
+    //IR A ESTACION 1
+    estacion[0].release();
+
+
+        for i in range(1,6){
+        permisoLavar[i].release();
+        permisoAvanzar.[i].acquire();
+
+        estaciones[i+1].acquire();
+        //IR A ESTACION I +1
+        estaciones[i].release();
+    }
+    estaciones[6].release();
+    permisoBajar[miRobot].release();
+    robotBajado[miRobot].acquire();
+
+}
+
+
+thread robot(id){
+    while(true){
+        permisoRobot.acquire();
+        Rid=id;
+        robotListo.release();
+        permisoSubir[id].acquire();
+        // 
+        robotSubido[id].release();
+        //
+        permisoBajar[id].acquire();
+        robotBajado[id].release();
+    }
+
+}
+
+
+----------------------- SEMAFORO --> CASINO
+Semaphore permisoAbrirRonda   = new Semaphore(1);  // Crupier inicia la ronda
+Semaphore permisoVerResultado = new Semaphore(0);  // Apostador espera resultado
+Semaphore mutexMesa           = new Semaphore(1);  // Protege la mesa (apuesta y contador)
+Semaphore cobroListo          = new Semaphore(0);  // Apostador avisa que cobró
+
+int resultado;                  // Número ganador
+int capitalInicial;              // Capital del apostador
+int apuesta;                     // Número apostado
+
+thread Apostador {
+    while (capitalInicial > 0) {
+
+        mutexMesa.acquire();            // Entrar a la mesa y apostar
+        apuesta = elegirNumero();       // elige número
+        capitalInicial--;
+        mutexMesa.release();
+
+        print("Apostador apostó el nro " + apuesta);
+
+        permisoVerResultado.acquire();  // Espera que el crupier gire la ruleta
+
+        // Verifica resultado
+        if (apuesta == resultado) {
+            capitalInicial += 36;
+            print("¡Gané!");
+        } else {
+            print("Perdí");
+        }
+
+        cobroListo.release();       // Avisar al crupier que ya cobró
+    }
+
+    print("Me voy a casa");
+};
+
+
+thread Crupier {
+    while (capitalInicial > 0) {
+        
+        permisoAbrirRonda.acquire();        // Espera a que se pueda abrir la ronda
+
+        print("No va más");
+
+        mutexMesa.acquire();               // Bloquea la mesa mientras gira la ruleta
+        resultado =  girarRuleta();        // gira la ruleta
+        mutexMesa.release();
+
+        permisoVerResultado.release();    // Permite al apostador cobrar
+
+        cobroListo.acquire();            // Espera a que el apostador cobre
+
+        permisoAbrirRonda.release();     // Ronda finalizada, listo para la siguiente
+    }
+};
+
+
+----------------------
+B)
+Semaphore permisoAbrirRonda   = new Semaphore(1);   // Crupier inicia la ronda
+Semaphore permisoVerResultado = new Semaphore(0);   // Apostadores esperan resultado
+Semaphore mutexMesa           = new Semaphore(1);   // Protege contador de apostadores
+Semaphore cobroListo          = new Semaphore(0);   // Apostadores avisan que cobraron
+
+int apostadoresActivos = 0;     // Cantidad de apostadores en la ronda
+int resultado;                  // Número ganador

@@ -268,8 +268,6 @@ thread Persona(List<int,int> rutina):{
 }
 
 ----------------------- ejercicio 4 
-
-
 int maquinaDisponible; 				//BUFFER
 Semaphore puedeAnunciarse   = new Semaphore(1); //FUERTE
 Semaphore puedeTomarMaquina = new Semaphore(0); //FUERTE
@@ -292,7 +290,6 @@ thread Maquina(id): {
 	}
 
 }
-
 
 thread Persona: {
 

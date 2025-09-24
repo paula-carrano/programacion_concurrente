@@ -1,0 +1,163 @@
+                            --- Semaforos --> Parcial : TRENES
+
+A)
+Semaphore permisoAbordar = new Semaphore(0, True)  // habilita subir
+Semaphore asientoOcupado = new Semaphore(0)        // cuenta pasajeros que ya subieron
+Semaphore permisoBajar = new Semaphore(0)          // habilita bajar
+Semaphore permisoVolver = new Semaphore(0)         // todos bajaron, tren puede volver
+
+int N = capacidad
+
+
+thread Tren {
+    while(true){
+        // en Bernal
+        repeat N times:
+            permisoAbordar.release()   // habilita que suban N pasajeros
+        repeat N times:
+            asientoOcupado.acquire()   // espera que N pasajeros suban
+
+        // viajar a Retiro ...
+
+        repeat N times:
+            permisoBajar.release()     // habilita que bajen todos
+        repeat N times:
+            permisoVolver.acquire()    // espera que todos bajen
+
+        // volver a Bernal (loop)
+    }
+}
+
+
+thread Persona {
+    while(true){
+        permisoAbordar.acquire()   // espera turno para subir
+        // subir ...
+        asientoOcupado.release()   // avisa al tren que ya está arriba
+
+        permisoBajar.acquire()     // espera permiso para bajar
+        // bajar ...
+        permisoVolver.release()    // avisa que ya bajó
+    }
+}
+
+
+-------------------------------------
+B)
+
+int capacidad      = N;
+int cantidadTrenes = K;
+
+Semaphore permisoAbordar[2]; 
+Semaphore permisoBajar[2];
+
+Semaphore asientoOcupado = new Semaphore(0);
+Semaphore permisoVolver = new Semaphore(0);
+
+Semaphore estaciones[10][2] = { {1,1}, {1,1}, {1,1}, {1,1}, {1,1}, {1,1},{1,1}, {1,1}, {1,1}, {1,1} }  // 8 estaciones en ambos sentidos + Bernal + Retiro
+
+
+thread Tren(int dirInicial){
+    dir = dirInicial;
+
+    while (true){
+        repeat (capacidad):
+            permisoAbordar[dir].release()
+        repeat  (capacidad):
+            asientoOcupado.acquire()
+
+        // Viaje
+
+        for i = 0 to 9:
+            estaciones[i][dir].acquire();
+                // pasa por las estaciones intermedias
+            estaciones[i][dir].release();
+
+        // Arribo
+        repeat (capacidad):
+            permisoBajar[dir].release()
+        repeat  (capacidad):
+            permisoVolver.acquire()
+
+        dir = (dir + 1) % 2;
+    }
+}
+
+
+thread Persona(int dir){
+
+    permisoAbordar[dir].acquire();
+    //sube al tren
+    asientoOcupado.release();
+
+    permisoBajar[dir].acquire();
+    //bajo del tren
+    permisoVolver.release();
+}
+
+-------------------------------------
+c)
+
+int capacidad      = N;
+int cantidadTrenes = K;
+
+Semaphore permisoAbordar[10][2]; 
+Semaphore permisoBajar[10][2];
+Semaphore todosBajaron[10][2];
+
+Semaphore asientoOcupado = new Semaphore(0);
+Semaphore permisoVolver = new Semaphore(0);
+
+Semaphore estaciones[10][2] = { {1,1}, {1,1}, {1,1}, {1,1}, {1,1}, {1,1},{1,1}, {1,1}, {1,1}, {1,1} }  // 8 estaciones en ambos sentidos + Bernal + Retiro
+
+Semaphore asiento = new Semaphore(N);
+
+
+int N = capacidad
+int K = cantidadTrenes
+int numEstaciones = 10  // 0=Bernal, 1..8 intermedias, 9=Retiro
+
+Semaphore estaciones[numEstaciones][2] = { {1,1},..., {1,1} }  // andenes
+Semaphore permisoSubir[numEstaciones][2]                      // da permiso a subir
+Semaphore permisoBajar[numEstaciones][2]                      // da permiso a bajar
+Semaphore todosBajaron[numEstaciones][2]                     // tren espera que todos bajen
+Semaphore asiento = new Semaphore(N)                          // capacidad del tren
+
+thread Tren(int dirInicial) {
+    dir = dirInicial
+    while (true) {
+        for estacion = 0 to 9 {
+            estaciones[estacion][dir].acquire()   // llega al andén
+
+            // --- BAJADA ---
+            repeat N:
+                permisoBajar[estacion][dir].release()
+            repeat N:
+                todosBajaron[estacion][dir].acquire()
+
+            // --- SUBIDA ---
+            repeat N:
+                permisoSubir[estacion][dir].release()
+            repeat N:
+                asiento.acquire()
+
+            estaciones[estacion][dir].release()  // libera el andén
+        }
+        dir = (dir + 1) % 2  // cambia dirección
+    }
+}
+thread Persona(int estacionSubida, int estacionBajada, int dir){
+    // --- Subida ---
+    permisoSubir[estacionSubida][dir].acquire()
+    asiento.release()   // ocupa un asiento
+    // sube al tren
+
+    // --- Viaje ---
+    for estacion = estacionSubida to estacionBajada{
+        if estacion == estacionBajada{
+            permisoBajar[estacion][dir].acquire()      // permiso para bajar
+            asiento.acquire()                           // libera asiento
+            todosBajaron[estacion][dir].release()      // notifica al tren
+        }
+    }
+}
