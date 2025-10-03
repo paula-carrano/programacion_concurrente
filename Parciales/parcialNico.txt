@@ -1,0 +1,308 @@
+--------EXCLUSIÓN MUTUA -----
+// N fijo, todos los threads tienen un id distinto tal que 0 <= id < N
+
+global bool[N] esperando = [false....false];
+global int cantEsperando = 0;
+global int proximo = -1;
+
+thread(id){
+    //Sección no critica
+
+    bool soyPrimero = anotarse(id);
+    if (soyPrimero) llamarProximo();
+    while (!proximo == id);
+
+    //Sección critica
+    bool soyUltimo = desanotarse(id);
+    if (!soyUltimo) llamarProximo();
+
+    //Sección no critica
+}
+
+bool anotarse(int idThread){
+    esperando[idThread] = True;
+    cantEsperando++;
+    return (cantEsperando == 1)
+}
+
+bool desanotarse(int idThread){
+    esperando[idThread] = False;
+    cantEsperando-- ;
+    return (cantEsperando == 0);
+}
+
+void llamarProximo(){
+    int res;
+    for in {N, ..., 0}{
+        if esperando[i] res = i;
+    }   
+    proximo = res;
+}
+
+
+                                                ------------ (( A )) ----------------------
+
+a) Si se considera que anotarse(), desanotarse() y llamarProximo() NO son atómicas, muestre adecuadamente que esta propuesta NO resueve el problema de exclusión mutua.
+
+T2              | T4                |    T5               |                                                        |
+anotarse()      |                   |                     |cantEsperando = 0, esperando={False,False,False,False}  |
+                |anotarse()         |                     |cantEsperando = 0, esperando={False,False,False,False}  |
+cantEsperando++ |                   |                     |cantEsperando = 1,esperando={True,True,False,False}     |
+                |cantEsperando++    |                     |cantEsperando = 1, esperando={True,True,False,False}    |
+                |                   |anotarse()           | cantEsperando =1, esperando={True,True,False,False}    |
+                |                   |cantidadEsperando++  | cantEsperando =1, esperando={True,True,False,True}     |
+llamarProximo() |                   |                     | 
+for...  res = 2 |                   |                     |                     
+while (false)   |                   |                     |  
+                |llamarProximo()    |                     |    
+                |for.. res = 2      |                     |  
+                |while(true)        |                     |  
+                |SC                 |                     |  
+                |                   | llamarProximo()     |
+                |                   | for...res =2        |
+                |                   | while(true)         |  
+                |                   | SC                  |
+
+
+* ¿Qué le impide a un thread entrar a la SC?
+
+Que la variable global proximo no coincida con su id.
+El thread se queda girando en el while (!proximo == id).
+Como llamarProximo() no es atómica, varios pueden dejar proximo con valores inconsistentes (pisándose entre sí). Eso puede hacer que un thread que debería ser el próximo nunca vea su id en la variable proximo, y quede bloqueado indefinidamente.
+
+* ¿Al menos un thread entra?
+
+Sí. Siempre que llamarProximo() asigne algún valor a proximo, al menos el thread cuyo id coincide con ese valor podrá entrar en la sección crítica. Es decir, siempre hay al menos un thread que progresa (no hay inanición total).
+
+* ¿Cada vez que algún thread entra a la sección crítica habilita al menos a un próximo?
+
+No necesariamente.
+El desbloqueo depende de desanotarse() y llamarProximo(). Como esas funciones no son atómicas, puede ocurrir que:
+
+varios threads hagan desanotarse() en paralelo y dejen cantEsperando en un valor incorrecto, o llamarProximo() se ejecute concurrentemente y fije proximo con un valor que ya no corresponde.
+
+Esto puede provocar que ningún nuevo thread sea efectivamente habilitado, o que siempre se habiliten los mismos (injusticia), dejando a otros esperando indefinidamente.
+
+                                                ------------ (( B )) ----------------------
+
+b) Si se considera que anotarse(), desanotarse() y llamarProximo() SON atómicas la propuesta posee la propiedad MUTEX. Explique por qué.
+
+Si anotarse(), desanotarse() y llamarProximo() se consideran atómicas, cada una de ellas se ejecuta de manera indivisible y no puede ser interrumpida por otro thread mientras modifica las variables compartidas. Esto asegura que el contador cantEsperando siempre refleje correctamente la cantidad de procesos esperando, y que la variable proximo contenga en cada momento un único identificador válido.
+
+En consecuencia, la condición de entrada a la sección crítica while (!proximo == id) solo se cumple para un thread a la vez: únicamente aquel cuyo id coincide con el valor actual de proximo. Por lo tanto, nunca habrá dos procesos simultáneamente en la sección crítica.
+
+De esta forma, la propuesta cumple con la propiedad de exclusión mutua (MUTEX), ya que garantiza que a lo sumo un thread puede estar en la sección crítica en cada instante de ejecución.
+
+                                                ------------ (( C )) ----------------------
+                                                
+c) Considerando que anotarse(), desanotarse() y llamarProximo() SON atómicas, ¿resuelve esta propueta el problema de exclusion mutua? Justifique apropiadamente.
+
+Si anotarse(), desanotarse() y llamarProximo() son atómicas, la propuesta garantiza la propiedad de exclusión mutua, ya que la variable proximo solo puede coincidir con un id a la vez, impidiendo que dos threads entren simultáneamente en la sección crítica. Además, siempre que un proceso termina y se desanota, si quedan otros esperando, se elige a alguno como próximo.
+
+Dado que la cantidad de threads N es fija, el recorrido de llamarProximo() asegura que eventualmente todos los procesos serán seleccionados. De esta manera, además de MUTEX y progreso, también se cumple la espera acotada: ningún thread puede quedar bloqueado indefinidamente.
+
+Por lo tanto, considerando operaciones atómicas y un conjunto fijo de N procesos, la propuesta sí resuelve completamente el problema de exclusión mutua.
+                                                        
+                                                                                                      
+    ============================================================================================================================================================================================================================================================================================================================================================================================================================                                                   
+                                                        
+                                                        ---- SEMAFORO ----
+
+En el pueblo de Culu Culu hay una unica linea de tren, "El rapido de Culu" que sale permanentemenete  desde la plataforma de salida de la estación.
+cuando una persona quiere partir en el rápido, se dirige al puesto de boleteria, donde hay una unica persona atendiendo, y un cartel que indica "hacer
+fila para recibir atención". Una vez que es su turno, la persona indica  que desea comprar un pasaje. Una vez recibiddo el pedido (y no antes), el boleteor
+determina si hay un lugar disponible en el tren (consideramos una función HayLugarDisponible() que devuelve un numero de ticket disponible si lo hay ó -1 si no).
+Si hay un boleto disponible, la persona recibe su numero de ticket y se retira de la ventanilla. De no haberlo, la persona es informada y se retira de la ventanilla; y
+luego de la estación. El boletero debe esperar a que la persona se retire de la ventanilla para llamar a la siguiente.
+
+a) Modele el comportamiento de la compra de tickets  para el tren  por medio del uso de semaforos y los threads Persona y Boleteria. Procure finalizar el proceso 
+cada persona se haya retirado de la estación o tenga un numero unico de ticket en su poder.
+
+Semaphore mutexFila = new Semaphore(1);                 // 1 persona en ventanilla
+Semaphore permisoAtencion = new Semaphore(0);           // boletero habilita persona a leer ticket
+Semaphore permisoSiguientePersona = new Semaphore(0);   // persona avisa que terminó
+Semaphore mutexTickets = new Semaphore(1);              // protege acceso a ticketSlot
+
+int ticketSlot;                                         // número de ticket o -1
+
+
+thread Persona {
+    int miNro;
+
+    mutexFila.acquire();            // espero mi turno en la fila
+
+    permisoAtencion.acquire();      // espero que el boletero me asigne ticket
+    miNro = ticketSlot;             // leo el valor escrito por boletería
+
+    permisoSiguientePersona.release(); // aviso al boletero que terminé
+    mutexFila.release();            // libero la fila para otra persona
+
+    // fuera de la ventanilla, sigo con mi ticket o me retiro si era -1
+}
+
+
+thread Boleteria {
+    while (true) {
+        mutexTickets.acquire();
+        ticketSlot = HayLugarDisponible();   // asigna número de ticket o -1
+        mutexTickets.release();
+
+        permisoAtencion.release();           // dejo que la persona lo lea
+        permisoSiguientePersona.acquire();   // espero confirmación
+    }
+}
+
+
+b) Modifique la solucion anterior agregando el thread Tren y el comportamiento relativo del ascenso al mismo: El anden de salida es unico, y vamos a considerar 
+un unico tren en la linea. Antes de tomar pasajeros, el tren debe salir del taller para colocarse en el anden (lo cual toma algun tiempo). Una vez  hecho esto, se habilita
+a subir a los pasajeros que tengan ticket y termina la venta de tickets con una función ticketsTerminados() (a partir de ese momento, si alguien llega para comprar un ticket,
+sigue interactuando con el boletero como antes, pero la funcion HayLugarDisponible() siempre devuelve -1; asegurarse de que ticketsTerminados() no se ejecuta concurrentemente
+con HayLugarDisponible()). Habilitando el ascenso, el trene espera que todos estos pasajeros hayan ascendido (lo cual puede demorar algun tiempo), y una vez hecho esto, parte 
+de la estación. Procure que el tren no se quede esperandoa personas que no tienen asiento.
+
+Semaphore permisoIrAAnden = new Semaphore(0);
+Semaphore permisoSubir = new Semaphore(0);
+Semaphore permisoArrancar = new Semaphore(0);
+Semaphore permisoAtencion = new Semaphore(0);
+Semaphore permisoSiguientePersona = new Semaphore(0);
+
+Semaphore mutexCantPasajeros = new Semaphore(1);
+Semaphore mutexFila = new Semaphore(1);
+Semaphore mutexTickets = new Semaphore(1); // protege HayLugarDisponible() y ticketsTerminados()
+
+int cantPasajeros = 0;   // pasajeros que consiguieron asiento
+int ticketSlot;          // número de asiento asignado o -1
+
+
+thread Tren {
+    // Simula salir del taller
+    permisoIrAAnden.acquire();  
+    
+    // Bloquear acceso a tickets para cerrarlos
+    mutexTickets.acquire();
+    ticketsTerminados(); // ahora nadie más recibe lugar
+    mutexTickets.release();
+    
+    // Habilitar ascenso: se liberan exactamente los lugares vendidos
+    permisoSubir.release(cantPasajeros);
+    
+    // Esperar que todos los que tienen ticket efectivamente suban
+    permisoArrancar.acquire(cantPasajeros);
+    
+}
+
+
+thread Persona {
+    int miNro;
+    
+    mutexFila.acquire();
+    
+    permisoAtencion.acquire();
+    
+    mutexTickets.acquire();
+    miNro = ticketSlot; // boletería ya lo calculó
+    if (miNro != -1) {
+        mutexCantPasajeros.acquire();
+        cantPasajeros++;
+        mutexCantPasajeros.release();
+    }
+    mutexTickets.release();
+
+    // Si consiguió ticket -> esperar turno de subir
+    if (miNro != -1) {
+        permisoSubir.acquire();
+        // sube al tren
+        permisoArrancar.release();    
+    }
+
+    permisoSiguientePersona.release();
+    mutexFila.release();
+}
+
+thread Boleteria {
+    while (true) {
+        mutexTickets.acquire();
+        ticketSlot = HayLugarDisponible(); // devuelve número o -1
+        mutexTickets.release();
+
+        permisoAtencion.release();
+        permisoSiguientePersona.acquire();
+    }
+}
+
+c) Modifique la solucion anterior considerando ahora que en el dia salen K trenes de el rapido de la estacion,identificados con su id que es un numero de 0 a k-1.
+Cada tren tiene capacidad para 100 personas y cada numero de ticket nt es un numero de al menos 3 cifras donde las ultimas dos son el numero de asiento (es decir, nt/100 es
+el numero de tren correspondiente al ticket). Ahora, el tren ejecuta    ticketsTerminados(int idTren), que hace que HayLugarDisponible() puede seguir dando numeros de ticket
+validos pero ya no son para el tren con id= idTren (esto es automatico). El anden sigue siendo unico, asi que cada tren que quiere ocuparlo debe esperar que este vacio ( aunque
+no es necesario garantizar el orden). Ahora cada tren debe permitir subir y esperar que suban las personas con un ticket correspondiente a ese tren.
+
+int[] cantPasajeros = new int[K]; // pasajeros con ticket para cada tren
+
+Semaphore[] permisoSubir = new Semaphore[K];         // un semáforo por tren
+Semaphore[] permisoArrancar = new Semaphore[K];      // un semáforo por tren
+Semaphore anden = new Semaphore(1);                  // el andén es único
+Semaphore permisoAtencion = new Semaphore(0);        
+Semaphore permisoSiguientePersona = new Semaphore(0);
+
+Semaphore mutexFila = new Semaphore(1);
+Semaphore mutexTickets = new Semaphore(1);           // protege HayLugarDisponible y ticketsTerminados
+
+int ticketSlot;                                     // ticket compartido (asiento+idTren) escrito por boletería
+
+thread Tren(idTren) {
+    // espera su turno en el andén
+    anden.acquire();
+    
+    // cerrar emisión de tickets para este tren
+    mutexTickets.acquire();
+    ticketsTerminados(idTren);
+    mutexTickets.release();
+
+    // habilitar ascenso: liberar lugares vendidos
+    permisoSubir[idTren].release(cantPasajeros[idTren]);
+
+    // esperar que todos los pasajeros asignados suban
+    permisoArrancar[idTren].acquire(cantPasajeros[idTren]);
+
+    // parte del andén
+    anden.release();
+}
+
+
+thread Persona {
+    int miNro;
+
+    mutexFila.acquire();
+
+    permisoAtencion.acquire();
+
+    mutexTickets.acquire();
+    miNro = ticketSlot;
+    if (miNro != -1) {
+        int idTren = miNro / 100;
+        cantPasajeros[idTren]++;
+    }
+    mutexTickets.release();
+
+    // si consiguió ticket válido, espera a su tren
+    if (miNro != -1) {
+        int idTren = miNro / 100;
+        permisoSubir[idTren].acquire();
+        // sube al tren correspondiente
+        permisoArrancar[idTren].release();
+    }
+
+    permisoSiguientePersona.release();
+    mutexFila.release();
+}
+
+thread Boleteria {
+    while (true) {
+        mutexTickets.acquire();
+        ticketSlot = HayLugarDisponible(); // asigna un ticket válido o -1
+        mutexTickets.release();
+
+        permisoAtencion.release();
+        permisoSiguientePersona.acquire();
+    }
+}

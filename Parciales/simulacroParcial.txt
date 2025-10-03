@@ -165,3 +165,221 @@ Semaphore cobroListo          = new Semaphore(0);   // Apostadores avisan que co
 
 int apostadoresActivos = 0;     // Cantidad de apostadores en la ronda
 int resultado;                  // Número ganador
+
+thread Apostador(int capitalInicial) {
+    while (capitalInicial > 0) {
+
+        // Entrar a la mesa y apostar
+        mutexMesa.acquire();
+        apostadoresActivos++;           // Primer paso tipo "lector"
+        int apuesta = elegirNumero();   // elige número
+        capitalInicial--;
+        mutexMesa.release();
+
+        print("Apostador apostó el nro " + apuesta);
+
+        // Espera el resultado del crupier
+        permisoVerResultado.acquire();
+
+        // Verifica resultado
+        if (apuesta == resultado) {
+            capitalInicial += 36;
+            print("¡Gané!");
+        } else {
+            print("Perdí");
+        }
+
+        // Avisar al crupier que ya cobró
+        cobroListo.release();
+
+        // Salir de la mesa
+        mutexMesa.acquire();
+        apostadoresActivos--;
+        mutexMesa.release();
+    }
+
+    print("Me voy a casa");
+};
+
+thread Crupier {
+    while (true) {
+
+        // Espera a que se pueda abrir la ronda
+        permisoAbrirRonda.acquire();
+
+        print("No va más");
+
+        // Bloquear la mesa mientras gira la ruleta
+        mutexMesa.acquire();
+        resultado = girarRuleta();              // gira la ruleta
+        int totalApostadores = apostadoresActivos; // cuántos apostadores entraron
+        mutexMesa.release();
+
+        // Permite a todos los apostadores cobrar
+        for (int i = 0; i < totalApostadores; i++) {
+            permisoVerResultado.release();
+        }
+
+        // Espera a que todos los apostadores cobren
+        for (int i = 0; i < totalApostadores; i++) {
+            cobroListo.acquire();
+        }
+
+        // Ronda finalizada, listo para la siguiente
+        permisoAbrirRonda.release();
+    }
+};
+
+--------------
+c)
+Semaphore permisoE            = new Semaphore(1);  // Exclusión total (mesa)
+Semaphore mutexL              = new Semaphore(1);  // Protege contador de lectores
+Semaphore mutexP              = new Semaphore(1);  // Protege contador de escritores
+Semaphore bloqueo             = new Semaphore(1);  // Para dar prioridad al crupier
+Semaphore permisoVerResultado = new Semaphore(0);
+Semaphore cobroListo          = new Semaphore(0);
+
+int lectores = 0;        // apostadores activos
+int escritores = 0;      // crupier esperando
+int resultado;
+
+thread Apostador(int capitalInicial) {
+    while (capitalInicial > 0) {
+
+        // Entrada sección crítica tipo lector
+        bloqueo.acquire();       // los apostadores respetan al crupier si quiere entrar
+        mutexL.acquire();
+        lectores++;
+        if (lectores == 1) permisoE.acquire();  // primer apostador bloquea la mesa
+        mutexL.release();
+        bloqueo.release();
+
+        // Apostar
+        int apuesta = elegirNumero();
+        capitalInicial--;
+        print("Apostador apostó el nro " + apuesta);
+
+        // Esperar resultado
+        permisoVerResultado.acquire();
+
+        // Cobrar
+        if (apuesta == resultado) {
+            capitalInicial += 36;
+            print("¡Gané!");
+        } else {
+            print("Perdí");
+        }
+
+        cobroListo.release();
+
+        // Salida sección crítica tipo lector
+        mutexL.acquire();
+        lectores--;
+        if (lectores == 0) permisoE.release();
+        mutexL.release();
+    }
+
+    print("Me voy a casa");
+};
+
+thread Crupier {
+    while (true) {
+
+        // Entrada sección crítica tipo escritor (con prioridad)
+        mutexP.acquire();
+        escritores++;
+        if (escritores == 1) bloqueo.acquire();  // bloquea nuevos lectores
+        mutexP.release();
+
+        permisoE.acquire();   // espera a que no haya apostadores activos
+
+        print("No va más");
+
+        // Gira ruleta
+        resultado = girarRuleta();
+        print("Sale el número: " + resultado);
+
+        // Da resultado a todos los apostadores que ya estaban
+        int totalLectores;
+        mutexL.acquire();
+        totalLectores = lectores;
+        mutexL.release();
+
+        for (int i = 0; i < totalLectores; i++) {
+            permisoVerResultado.release();
+        }
+
+        // Espera que todos los apostadores cobren
+        for (int i = 0; i < totalLectores; i++) {
+            cobroListo.acquire();
+        }
+
+        // Salida sección crítica tipo escritor
+        permisoE.release();
+
+        mutexP.acquire();
+        escritores--;
+        if (escritores == 0) bloqueo.release();  // permite otra vez el acceso a apostadores
+        mutexP.release();
+    }
+};
+
+
+--------------------------------------------------- EXCLUSION MUTUA
+
+ global int permisos = 1;
+ 
+ thread {
+    //SNC
+    bool tengoPermiso = False;
+    while (!tengoPermiso)
+        tengoPermiso = pedirPermiso();
+    //SC
+    devolverPermiso();
+ }
+
+ public bool pedirPermiso {
+    if (permisos > 0) {
+        permisos--;
+        return true;
+    } else {
+        return false;
+    }
+ }
+
+ public void devolverPermiso() {
+    permisos++;
+ }
+
+ A) No cumple MUTEX: 
+    | T0            | T1            |             |
+    |pedirPermiso() |               | permiso =1  |
+    |permisos > 0   |               | true        |
+    |               |pedirPermiso() | permiso=1   |
+    |               |permisos > 0   | true        | 
+    |               |permisos--     | permiso=0   |
+    |               |return true    |             |                    
+    |               |   SC          |             |
+    | permisos --   |               |permisos = -1|
+    | return true   |               |             |   
+    | SC            |               |             |               
+
+ B) NO CUMPLE GARANTIA DE ENTRADA: 
+    ¿Qué le impide a un thread entrar a la SC?
+Que la variable permisos tenga valor 0 o negativo. Como pedirPermiso() no es atómica, varios threads pueden leer al mismo tiempo que permisos > 0 y todos intentan restar. Esto puede dejar a permisos en valores inconsistentes (0 o negativos), impidiendo que algunos threads avancen aunque el permiso “debería” estar disponible.
+
+¿Al menos un thread entra?
+Sí. Mientras permisos tenga algún valor mayor que 0 cuando se consulta, al menos uno de los threads que lo leyó podrá entrar a la SC. Es decir, siempre hay algún thread que logra avanzar.
+
+¿Cada vez que algún thread entra a la sección crítica habilita al menos a un próximo?
+No. Como los accesos a permisos no son atómicos, puede pasar que ciertos threads entren y salgan repetidamente, volviendo a incrementar y decrementar permisos, sin que otros consigan nunca observarlo en un valor positivo. En consecuencia, un thread puede quedar esperando indefinidamente aunque otros entren y salgan muchas veces.
+
+ C) ATOMICO pedirPermiso() y devolverPermiso():
+ ¿Qué le impide a un thread entrar a la SC?
+Que permisos sea igual a 0. Al ser atómica la operación pedirPermiso(), si dos threads la ejecutan simultáneamente, sólo uno podrá decrementar el valor de permisos de 1 a 0 y obtener acceso; el otro recibirá false. Así se asegura que nunca más de un thread entra a la SC a la vez.
+
+¿Al menos un thread entra?
+Sí. Siempre que permisos > 0, al menos un thread obtendrá permiso y entrará a la SC. Al ser la operación atómica, no puede ocurrir que varios lo lean a la vez y se bloquee indebidamente.
+
+¿Cada vez que algún thread entra a la sección crítica habilita al menos a un próximo?
+Sí. Cuando un thread sale de la SC, ejecuta devolverPermiso() de forma atómica, incrementando permisos. Esto garantiza que un nuevo thread podrá obtener el permiso y entrar. De esta manera, cada entrada a la SC asegura la posibilidad de que otro la siga.
