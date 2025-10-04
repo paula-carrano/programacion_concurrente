@@ -15,12 +15,13 @@ public class gridB {
             wait();
         }
         productores++;
+        notifyAll();
     }
 
     // finProduccion
     public synchronized void finProduccion() throws InterruptedException {
         // no puedo dejar sin suministros a los consumidores
-        while ((productores - 1) < consumidores) {
+        while (productores == consumidores) {
             wait();
         }
         productores--;
@@ -30,7 +31,7 @@ public class gridB {
     // inicioConsumo
     public synchronized void inicioConsumo() throws InterruptedException {
         // al menos hay un productor
-        while (productores < 1) {
+        while (consumidores >= productores) {
             wait();
         }
         consumidores++;
