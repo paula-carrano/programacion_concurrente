@@ -35,6 +35,7 @@ public class gridB {
             wait();
         }
         consumidores++;
+        notifyAll();
     }
 
     // finConsumo
