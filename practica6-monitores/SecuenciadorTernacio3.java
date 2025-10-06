@@ -1,7 +1,7 @@
 // EJERCICIO 3
 
 public class SecuenciadorTernacio3 {
-    private int estado = 0;
+    private int estado = 1;
 
     // primero() -> ejecuta 1 vez
     public synchronized void primero() throws InterruptedException {

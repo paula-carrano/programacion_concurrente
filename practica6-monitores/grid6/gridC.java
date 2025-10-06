@@ -16,13 +16,14 @@ public class gridC {
             wait();
         }
         productores++;
+        notifyAll();
     }
 
     // finProduccion
     public synchronized void finProduccion() throws InterruptedException {
         productoresEsperando++;
-        while ((productores - 1) < consumidores) {
-            wait(); // espera si al terminar va a dejar sin suministros a los consumidores
+        while (productores == consumidores) {
+            wait();
         }
         productores--;
         productoresEsperando--;
@@ -31,10 +32,11 @@ public class gridC {
 
     // inicioConsumo
     public synchronized void inicioConsumo() throws InterruptedException {
-        while (productores < 1 || productoresEsperando > 0) {
+        while (productores <= consumidores || productoresEsperando > 0) {
             wait(); // espera si no hay productores o si hay productores esperando a terminar
         }
         consumidores++;
+        notifyAll();
     }
 
     // finConsumo

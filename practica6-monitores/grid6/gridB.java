@@ -11,7 +11,7 @@ public class gridB {
 
     // inicioProduccion
     public synchronized void inicioProduccion() throws InterruptedException {
-        while ((productores - consumidores) >= N) { // espera hasta que haya menos productores ociosos
+        while ((productores - consumidores) >= N) {
             wait();
         }
         productores++;
