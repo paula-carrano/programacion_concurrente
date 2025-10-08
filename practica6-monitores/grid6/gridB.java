@@ -1,17 +1,17 @@
 package grid6;
 
 public class gridB {
-    private final int N;
     private int consumidores = 0;
     private int productores = 0;
+    private int maxOciosos;
 
     public gridB(int n) {
-        this.N = n;
+        this.maxOciosos = n;
     }
 
     // inicioProduccion
     public synchronized void inicioProduccion() throws InterruptedException {
-        while ((productores - consumidores) >= N) {
+        while ((productores - consumidores) >= maxOciosos) { // espera hasta que haya menos productores ociosos
             wait();
         }
         productores++;
@@ -20,7 +20,6 @@ public class gridB {
 
     // finProduccion
     public synchronized void finProduccion() throws InterruptedException {
-        // no puedo dejar sin suministros a los consumidores
         while (productores == consumidores) {
             wait();
         }
@@ -30,7 +29,6 @@ public class gridB {
 
     // inicioConsumo
     public synchronized void inicioConsumo() throws InterruptedException {
-        // al menos hay un productor
         while (consumidores >= productores) {
             wait();
         }

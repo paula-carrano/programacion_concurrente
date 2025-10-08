@@ -12,17 +12,17 @@ public class gridA {
 
     // finProduccion
     public synchronized void finProduccion() throws InterruptedException {
-        while (productores ==consumidores) {
+        while (productores == consumidores) {
             wait();
         }
         productores--;
-      
+
     }
 
     // inicioConsumo
     public synchronized void inicioConsumo() throws InterruptedException {
         // al menos hay un productor
-        while (consumidor >= productores) {
+        while (consumidores >= productores) {
             wait();
         }
         consumidores++;
