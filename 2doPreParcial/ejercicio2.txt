@@ -1,0 +1,114 @@
+
+global Channel agencia = new Channel();
+global Channel auto    = new Channel();
+global Channel hotel   = new Channel();
+global Channel vuelo   = new Channel();
+
+process Agencia {
+    while (true) {
+        (fecha, chCliente) = agencia.receive();
+    
+        Channel chResponse = new Channel();
+    
+        thread consultar (fecha,auto, chResponse);
+        thread consultar (fecha,hotel,chResponse);
+        thread consultar (fecha,vuelo,chResponse);
+    
+        int count =0;
+        bool respuesta = true;
+    
+        while (respuesta && count < 3){
+            respuesta = chResponse.receive()
+            count ++;
+        }
+    
+        chClient.send(respuesta)
+    }
+}
+
+ void consultar(fecha, Channel ch, Channel chResponse){
+        ch.send(fecha, chResponse)
+    }
+
+----B
+global Channel agencia = new Channel();
+global Channel auto    = new Channel();
+global Channel hotel   = new Channel();
+global Channel vuelo   = new Channel();
+
+process Agencia {
+        while (true){
+            (fecha, chCliente) = agencia.receive();
+            
+            thread(fecha, chCliene) {
+                Channel chResponse = new Channel();
+                
+                thread consultar (fecha,auto, chResponse);
+                thread consultar (fecha,hotel,chResponse);
+                thread consultar (fecha,vuelo,chResponse);
+
+                int count =0;
+                bool respuesta = true;
+
+                while (respuesta && count < 3){
+                    respuesta = chResponse.receive()
+                    count ++;
+                }
+
+                chClient.send(respuesta)
+            }
+        }
+}
+
+ void consultar(fecha, Channel ch, Channel chResponse){
+        ch.send(fecha, chResponse)
+    }
+
+---C
+global Channel[] vuelo;  
+global Channel[] hotel;  
+global Channel[] auto;   
+global Channel agencia = new Channel();
+
+process Agencia {
+        while (true){
+            (fecha, chCliente) = agencia.receive();
+            
+            thread(fecha, chCliente) {
+                Channel chResponse1 = new Channel();
+                Channel chResponse2 = new Channel();
+                Channel chResponse3 = new Channel();
+                Channel chAgenciaInterno = new Channel();
+                
+                thread consultar (fecha,auto, chResponse1,chAgenciaInterno);
+                thread consultar (fecha,hotel,chResponse2,chAgenciaInterno);
+                thread consultar (fecha,vuelo,chResponse3,chAgenciaInterno);
+
+                int count =0;
+                bool respuesta = true;
+
+                while (respuesta && count < 3){
+                    respuesta = chAgenciaInterno.receive()
+                    count ++;
+                }
+
+                chClient.send(respuesta)
+            }
+        }
+}
+
+ void consultar(fecha, List<Channel> servicios, Channel chResponse, Channel chAgenciaInterno){
+
+        foreach ch in servicios 
+            ch.send(fecha, chResponse)
+
+        bool rt = false;
+        int count = 0;
+
+        while (! rt && count < servicios.size()) {
+            rt = chResponse.receive();
+            count++;
+        }
+
+        chAgenciaInterno.send(rt)
+    }

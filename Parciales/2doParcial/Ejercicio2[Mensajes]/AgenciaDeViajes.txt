@@ -1,0 +1,72 @@
+/*
+ Implemente el proceso de la agencia de viajes que consulta simultaneamente a cada uno de
+ los proveedores de servicios de forma de maximizar la concurrencia, e indica si un paquete
+ puede armarse en la fecha dada por el cliente.
+*/
+
+
+global Channel agencia = new Channel();
+global Channel auto    = new Channel();
+global Channel hotel   = new Channel();
+global Channel vuelo   = new Channel();
+
+
+
+process Agencia {
+    while(true){
+        (String fecha, Channel chRespuestaCliente) = agencia.receive();
+
+        // Crear canales para recibir respuestas de proveedores
+        Channel chVuelo = new Channel();
+        Channel chHotel = new Channel();
+        Channel chAuto  = new Channel();
+
+        // Enviar consultas a los proveedores con la fecha
+        vuelo.send( (fecha, chVuelo) );
+        hotel.send( (fecha, chHotel) );
+        auto.send(  (fecha, chAuto) );
+
+        // Esperar respuestas
+        bool dispoVuelo = chVuelo.receive();
+        bool dispoHotel = chHotel.receive();
+        bool dispoAuto  = chAuto.receive();
+    }
+
+        //Veo la dispo del paquete
+        bool dispo = dispoVuelo && dispoAuto && dispoHotel;
+        chRespuestaCliente.send(dispo);
+}
+
+
+--------------------- VERSION PROFE -------------------------
+
+global Channel agencia = new Channel();
+global Channel auto    = new Channel();
+global Channel hotel   = new Channel();
+global Channel vuelo   = new Channel();
+
+process Agencia {
+    while (true) {
+        (fecha, chCliente) = agencia.receive();
+    
+        Channel chResponse = new Channel();
+    
+        thread consultar (fecha,auto, chResponse);
+        thread consultar (fecha,hotel,chResponse);
+        thread consultar (fecha,vuelo,chResponse);
+    
+        int count =0;
+        bool respuesta = true;
+    
+        while (respuesta && count < 3){
+            respuesta = chResponse.receive()
+            count ++;
+        }
+    
+        chClient.send(respuesta)
+    }
+}
+
+ void consultar(fecha, Channel ch, Channel chResponse){
+        ch.send(fecha, chResponse)
+    }

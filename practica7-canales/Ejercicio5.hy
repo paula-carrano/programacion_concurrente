@@ -46,3 +46,50 @@ process Cliente:{
     }
 
 }
+
+------------------OPCION PROFE
+
+global Channel chServidor = new Channel();
+
+
+process Servidor {
+    while(true){
+        Request req = chServidor.receive();
+        thread(req) {
+            int numeroAleatorio = new Integer(random()*10);
+            bool acerto= false;
+
+            while (!acerto){
+                int intento = req.chIntentos.receive();
+                if (numeroAleatorio == intento){
+                    req.chRespuestas.send("Acertaste")
+                    acerto=true;
+                }else {
+                    req.chRespuestas.send("Fallaste")
+                }
+            }
+        }
+    }
+}
+
+
+process Cliente {
+    Request req = new Request();
+    req.chIntentos= new Channel();
+    req.chRespuestas = new Channel();
+    chServidor.send(req);
+
+    bool acerte = false;
+
+    while(!acerte){
+        int intento = parseInt(read());
+        req.chIntentos.send(intento);
+        String respuesta= req.chRespuestas.receive();
+        
+        print(respuesta);
+
+        if (respuesta == "Acertaste"){
+            acerte = true;
+        }
+    }
+}

@@ -1,0 +1,82 @@
+
+/*
+Modifique el punto anterior de forma tal que la agencia de viajes acepte múltiples consultas
+ concurrentes.
+*/
+
+
+
+// Canales globales
+global Channel agencia = new Channel();
+global Channel vuelo   = new Channel();
+global Channel hotel   = new Channel();
+global Channel auto    = new Channel();
+
+
+process Agencia {
+    while(true){
+        while (true) {
+        // Recibe un pedido: tupla (fecha, canalRespuestaCliente)
+        (String fecha, Channel chRespuestaCliente) = agencia.receive();
+
+        // Crear un thread para procesar este pedido
+            thread(fecha, chRespuestaCliente) {
+                
+                Channel chVuelo = new Channel();
+                Channel chHotel = new Channel();
+                Channel chAuto  = new Channel();
+
+                
+                vuelo.send( (fecha, chVuelo) );
+                hotel.send( (fecha, chHotel) );
+                auto.send(  (fecha, chAuto) );
+
+            
+                bool dispVuelo = chVuelo.receive();
+                bool dispHotel = chHotel.receive();
+                bool dispAuto  = chAuto.receive();
+
+                bool disponible = dispVuelo && dispHotel && dispAuto;
+
+                
+                chRespuestaCliente.send(disponible);
+            }
+        }
+    }
+};
+
+
+--------------------- VERSION PROFE -------------------------
+
+global Channel agencia = new Channel();
+global Channel auto    = new Channel();
+global Channel hotel   = new Channel();
+global Channel vuelo   = new Channel();
+
+process Agencia {
+        while (true){
+            (fecha, chCliente) = agencia.receive();
+            
+            thread(fecha, chCliene) {
+                Channel chResponse = new Channel();
+                
+                thread consultar (fecha,auto, chResponse);
+                thread consultar (fecha,hotel,chResponse);
+                thread consultar (fecha,vuelo,chResponse);
+
+                int count =0;
+                bool respuesta = true;
+
+                while (respuesta && count < 3){
+                    respuesta = chResponse.receive()
+                    count ++;
+                }
+
+                chClient.send(respuesta)
+            }
+        }
+}
+
+ void consultar(fecha, Channel ch, Channel chResponse){
+        ch.send(fecha, chResponse)
+    }

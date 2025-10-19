@@ -1,0 +1,56 @@
+/*
+Extienda el punto anterior considerando que en lugar de un ´unico proveedor para cada
+ servicio la agencia trabaja con m´ultiples proveedores. Para ello considere las variables
+ vuelo, hotel y auto arreglos de canales. La agencia debe consultar a todos sus proveedores
+ concurrentemente y reportar si puede armar un paquete completo. Tenga en cuenta que los
+ proveedores pueden tener distintos tiempos de respuesta y que la agencia debe responder
+ tan r´apido como le sea posible.
+*/
+
+global Channel[] vuelo;  
+global Channel[] hotel;  
+global Channel[] auto;   
+global Channel agencia = new Channel();
+
+process Agencia {
+        while (true){
+            (fecha, chCliente) = agencia.receive();
+            
+            thread(fecha, chCliente) {
+                Channel chResponse1 = new Channel();
+                Channel chResponse2 = new Channel();
+                Channel chResponse3 = new Channel();
+                Channel chAgenciaInterno = new Channel();
+                
+                thread consultar (fecha,auto, chResponse1,chAgenciaInterno);
+                thread consultar (fecha,hotel,chResponse2,chAgenciaInterno);
+                thread consultar (fecha,vuelo,chResponse3,chAgenciaInterno);
+
+                int count =0;
+                bool respuesta = true;
+
+                while (respuesta && count < 3){
+                    respuesta = chAgenciaInterno.receive()
+                    count ++;
+                }
+
+                chClient.send(respuesta)
+            }
+        }
+}
+
+ void consultar(fecha, List<Channel> servicios, Channel chResponse, Channel chAgenciaInterno){
+
+        foreach ch in servicios 
+            ch.send(fecha, chResponse)
+
+        bool rt = false;
+        int count = 0;
+
+        while (! rt && count < servicios.size()) {
+            rt = chResponse.receive();
+            count++;
+        }
+
+        chAgenciaInterno.send(rt)
+    }
