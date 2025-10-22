@@ -1,0 +1,83 @@
+
+/*
+Modifique la soluci´on anterior para que el Servidor central responda cada mensaje con un
+ n´umero aleatorio que debe ser sumado al ID del agente en futuros reportes (i.e., mante
+niendo el esquema de que el Servidor no se comunica directamente con los agentes, sino
+ que pasa a trav´es del Proxy).
+
+*/
+
+
+
+/* Estructura de Channels usados en el Request
+    Channel chAgentToProxy;   // Agente -> Proxy
+    Channel chProxyToAgent;   // Proxy  -> Agente
+    Channel chStatus;         // Proxy  -> Servidor (status)
+    Channel chServerToProxy;    // Servidor -> Proxy (delta)
+*/
+
+
+global Channel toProxy  = new Channel();
+global Channel toServer = new Channel(); 
+
+
+process Agente(int id) {
+    int Aid = id;
+    Request reqA = new Request();
+    reqA.chAgentToProxy = new Channel();
+    reqA.chProxyToAgent = new Channel();
+
+    toProxy.send(reqA); // establece la “conexión” con el Proxy
+
+    while (true) {
+        String msg = "Agente " + Aid + " vivo";
+        reqA.chAgentToProxy.send(msg);
+
+        int delta = reqA.chProxyToAgent.receive();
+
+        Aid = Aid + delta;
+
+        sleep(60s);
+    }
+};
+
+
+process Proxy() {
+    while (true) {
+        Request reqA = toProxy.receive();
+
+        thread (reqA) {
+            Request reqP = new Request();
+            reqP.chStatus      = new Channel(); 
+            reqP.chServerToProxy = new Channel();
+
+            toServer.send(reqP);
+
+            while (true) {
+              
+                String agentStatus = reqA.chAgentToProxy.receive();
+                reqP.chStatus.send(agentStatus);
+
+                
+                int random = reqP.chServerToProxy.receive();
+                reqA.chProxyToAgent.send(random);
+            }
+        }
+    }
+};
+
+process Servidor() {
+    while (true) {
+        Request r = toServer.receive();
+
+        thread (r) {
+            while (true) {
+                String status = r.chStatus.receive();
+                print(status);
+
+                int delta = random(1, 10);
+                r.chServerToProxy.send(delta);
+            }
+        }
+    }
+};

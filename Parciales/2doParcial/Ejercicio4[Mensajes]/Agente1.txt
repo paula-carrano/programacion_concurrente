@@ -1,0 +1,27 @@
+/*
+Modele el escenario descrito utilizando intercambio de mensajes por canales (sin utilizar
+ memoria compartida).
+*/
+
+global Channel toProxy  = new Channel(); 
+global Channel toServer = new Channel(); 
+
+process Agente(int id) {
+    while(true) {
+        sleep(60s);
+        toProxy.send("ok");
+    }
+};
+
+
+process Proxy(){
+    while(true){
+        String status= toProxy.receive();
+        toServer.send(status);
+    }
+}
+
+process Servidor() {
+    String status = toServer.receive();
+    print(status);
+}

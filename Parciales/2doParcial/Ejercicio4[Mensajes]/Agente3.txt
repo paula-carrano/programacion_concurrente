@@ -1,0 +1,88 @@
+
+/*
+extienda la soluci´on anterior para que el Servidor notifique (i.e., imprimiendo por pantalla)
+ cuando no haya recibido comunicaci´on de alg´un Agente cualquiera en los ´ultimos 2 minutos
+ (aproximadamente).
+*/
+
+global Channel toProxy  = new Channel();
+global Channel toServer = new Channel(); 
+
+
+process Agente(int id) {
+    int Aid = id;
+    Request reqA = new Request();
+    reqA.chAgentToProxy = new Channel();
+    reqA.chProxyToAgent = new Channel();
+
+    toProxy.send(reqA); // establece la “conexión” con el Proxy
+
+    while (true) {
+        String msg = "Agente " + Aid + " vivo";
+        reqA.chAgentToProxy.send(msg);
+
+        int delta = reqA.chProxyToAgent.receive();
+
+        Aid = Aid + delta;
+
+        sleep(60s);
+    }
+};
+
+
+process Proxy() {
+    while (true) {
+        Request reqA = toProxy.receive();
+
+        thread (reqA) {
+            Request reqP = new Request();
+            reqP.chStatus      = new Channel(); 
+            reqP.chServerToProxy = new Channel();
+
+            toServer.send(reqP);
+
+            while (true) {
+              
+                String agentStatus = reqA.chAgentToProxy.receive();
+                reqP.chStatus.send(agentStatus);
+
+                
+                int random = reqP.chServerToProxy.receive();
+                reqA.chProxyToAgent.send(random);
+            }
+        }
+    }
+};
+
+process Servidor() {
+    time lastAny= now();
+    bool alert = false;
+
+    //MONITOREO SI PASARON 120 S SIN MENSAJES
+    thread MonitoreoSilencio(){
+        while(true){
+            sleep(10s);
+            if (now()-lastAny > 120s){
+                if(!alert){
+                    print ("No se reciben mensajes de NINGUN AGENTE en + 2 min");
+                    alert = true;
+                }
+            }
+        }
+    }
+
+
+    while (true) {
+        Request r = toServer.receive();
+
+        thread (r) {
+            while (true) {
+                String status = r.chStatus.receive();
+                print(status);
+
+                int delta = random(1, 10);
+                r.chServerToProxy.send(delta);
+            }
+        }
+    }
+};
