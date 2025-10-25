@@ -1,0 +1,78 @@
+
+A)
+Monitor museo {
+    int totalLlegaron = 0;
+    int esperando = 0;
+    int permitidos = 0;
+
+    //cada vez que 1 visitante llega
+    public void esperar(){
+        totalLlegaron++;
+        esperando++;
+
+        while(permitidos == 0){
+            wait();
+        }
+
+        permitidos--;
+        esperando--;
+    }
+
+    //guia dice cuantas personas pasan
+    public void admitir(int k){
+        permitidos+= k;
+        notifyAll();
+    }
+
+    //para el guia sepa cuantos totalLlegaron
+    public int cantLlegadas(){
+        return totalLlegaron;
+    }
+
+}
+
+                 =============================================
+b)
+
+Monitor museo {
+    int esperando = 0;
+    int permitidos = 0;
+    int adentro= 0;
+    int N;
+    bool puertasAbiertas = false;
+
+   // visitantes llegan y esperan
+   public void entrar(){
+        esperando++;
+
+         // Ver si con esta llegada se completa un nuevo grupo
+        if (!puertasAbiertas && esperando >=N && adentro == 0){
+        puertasAbiertas = true;
+        permitidos = N;
+        notifyAll();
+
+        // Ver si con esta llegada se completa un nuevo grupo
+        while(!puertasAbiertas || permitidos == 0){
+            wait();
+        }
+
+        permitidos--;
+        esperando--;
+        adentro++;
+   }
+
+   public void salir(){
+        adentro--;
+
+        if(adentro == 0){
+            puertasAbiertas = false;
+
+            if(esperando >=N){
+                puertasAbiertas = true;
+                permitidos = N;
+                notifyAll();
+            }
+        }
+   }
+
+}

@@ -1,0 +1,201 @@
+global Channel solicitudes = new Channel();
+
+Class Request {
+    String tipo;            //"login", "microActualizacion", "logout"
+    Credenciales log;       // para login (usuario y contraseña)
+    State estado;           // para microActualizacion
+    String usuario;
+    Channel response;
+}
+
+Class Sesion {
+    String usuario;     //id usuario
+    World mundo;        // mundo asociado
+    Channel cRespuesta; // canal p/enviar resp
+}
+
+
+process ServidorJuego {
+    List<Sesion> sesionesActivas = new List<Sesion>();
+
+    function buscarSesion(usuario){
+        for s in sesionesActivas{
+            if (s.usuario == usuario) return s
+        }
+        return null;
+    }
+
+
+    procedure manejarLogin(req){
+        if(validar(req.log)){
+            
+            int seed = random();
+            World mundoUser = generar_mundo(seed);
+
+            Sesion s = new Sesion();
+            s.usuario = req.log.usuario;
+            s.mundo = mundoUser;
+            s.cRespuesta = req.response;
+
+            sesionesActivas.add(s);
+            req.response.send("Login exitoso");
+        }else{
+            req.response.send("Login inválido")
+        }
+    }
+
+    procedure manejarMicroUpdate(req){
+        Sesion s = buscarSesion(req.usuario);
+        if (s !=null){
+            thread(req){
+                micro_update(req.estado, s.mundo);
+                req.response("Update procesado");
+            }
+        }else{
+            req.response.send("Usuario no logueado");
+        }
+    }
+
+
+    procedure manejarLogout(req){
+        Sesion s = buscarSesion(req.log.usuario);
+
+        if(s != null){
+            sesionesActivas.remove(s);
+            req.response.send("logout exitoso");
+        }else{
+            req.response.send("Usuario no logueado");
+        }
+    }
+
+    while(true){
+        Request req= solicitudes.receive();
+
+        switch(req.tipo){
+            case "login": manejarLogin(req); break;
+            case "micro_update": manejarMicroUpdate(req); break;
+            case "logout": manejarLogout(req); break;
+            default: req.response.send("Tipo de pedido desconocido"); break;
+        }
+    }
+}
+
+            ================================================================================
+B)  
+
+global Channel solicitudes = new Channel();
+
+Class Request {
+    String tipo;            //"login", "microActualizacion", "logout"
+    Credenciales log;       // para login (usuario y contraseña)
+    State estado;           // para microActualizacion
+    String usuario;
+    Channel response;
+}
+
+Class Sesion {
+    String usuario;     //id usuario
+    World mundo;        // mundo asociado
+    Channel cRespuesta; // canal p/enviar resp
+    Bool multijugador;
+}
+
+
+process ServidorJuego {
+    List<Sesion> sesionesActivas = new List<Sesion>();
+    List<Sesion> participantesMulti = new List<Sesion>();
+    World mundoGlobal = null;
+
+    function buscarSesion(usuario){
+        for s in sesionesActivas{
+            if (s.usuario == usuario) return s
+        }
+        return null;
+    }
+
+
+    procedure manejarLogin(req){
+        if(validar(req.log)){
+            
+            int seed = random();
+            World mundoUser = generar_mundo(seed);
+
+            Sesion s = new Sesion();
+            s.usuario = req.log.usuario;
+            s.mundo = mundoUser;
+            s.cRespuesta = req.response;
+
+            sesionesActivas.add(s);
+            req.response.send("Login exitoso");
+        }else{
+            req.response.send("Login inválido")
+        }
+    }
+
+
+    procedure inicioMultiJugador(req){
+        if (mundoGlobal == null){
+            int seed = random();
+            mundoGlobal = generar_mundo(seed)
+        }
+
+        Sesion s= buscarSesion(req.usuario){
+            if (s != null){
+                s.multijugador = true;
+                s.mundo = null;
+                participantesMulti.add(s);
+                req.response.send("Multijugador iniciado");
+            }else{
+                req.response.send("Usuario no logueado");
+            }
+        }
+    }
+
+    procedure manejarMicroUpdate(req){
+        Sesion s = buscarSesion(req.usuario);
+        if (s != null){
+            if(s.multijugador){
+                thread(req){
+                    micro_update(req.estado, mundoGlobal);
+                    for (p in participantesMulti){
+                        p.cRespuesta.send("update aplicado:" + req.usuario)
+                    }
+                }
+            }else{
+                thread(req){
+                    micro_update(req.estado,s.mundo);
+                    req.response.send("update procesado")
+                }
+            }
+        }else{
+            req.response.send("usuario no logueado");
+        }
+    }
+
+
+    procedure manejarLogout(req){
+        Sesion s = buscarSesion(req.log.usuario);
+
+        if(s != null){
+            sesionesActivas.remove(s);
+            if(s.multijugador){
+                participantesMulti.remove(s);
+            }
+            req.response.send("logout exitoso");
+        }else{
+            req.response.send("Usuario no logueado");
+        }
+    }
+
+    while(true){
+        Request req= solicitudes.receive();
+
+        switch(req.tipo){
+            case "login": manejarLogin(req); break;
+            case "iniciarMultijugador": iniciarMultijugador(req); break;
+            case "micro_update": manejarMicroUpdate(req); break;
+            case "logout": manejarLogout(req); break;
+            default: req.response.send("Tipo de pedido desconocido"); break;
+        }
+    }
+}

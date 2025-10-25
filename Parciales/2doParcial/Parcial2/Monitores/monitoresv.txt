@@ -1,0 +1,97 @@
+
+A)
+Monitor Helipuerto{
+    int capacidadActual      = 0;
+    int pasajerosSubidos     = 0;
+    boolean helipuertoOcupado= false;
+
+    void descender(int capacidad){
+
+        while(helipuertoOcupado){
+            wait();
+        }
+        helipuertoOcupado = true;
+        capacidadActual = capacidad;
+        pasajerosSubidos = 0;
+        notifyAll();
+    }
+    
+    void despegar(){
+        while(!helipuertoOcupado){
+            wait();
+        }
+        helipuertoOcupado=false;
+        capacidadActual=0;
+        pasajerosSubidos=0;
+        notifyAll();
+    }
+    
+    void subirse(){
+        while(!helipuertoOcupado || pasajerosSubidos >= capacidadActual){
+            wait();
+        }
+        pasajerosSubidos++;
+    }
+
+}
+        ===============================================================
+b) 
+Mmonitor Helipuerto {
+    int capacidadActual = 0;        //  regulares
+    int pasajerosSubidos = 0;       // para regulares
+    boolean helipuertoOcupado = false;
+    boolean especialEnPlataforma = false;
+
+    int helicosRegularesEsperando = 0;
+    int helicosEspecialesEsperando = 0;
+
+    void descender(int capacidad) {
+        helicosRegularesEsperando++;
+        while (helipuertoOcupado || helicosEspecialesEsperando > 0) { 
+            wait();
+        }
+        helicosRegularesEsperando--;
+        helipuertoOcupado = true;
+        especialEnPlataforma = false;
+        capacidadActual = capacidad;
+        pasajerosSubidos = 0;
+        notifyAll(); // despierta personas regulares
+    }
+
+    void despegar() {
+        helipuertoOcupado = false;
+        capacidadActual = 0;
+        pasajerosSubidos = 0;
+        notifyAll(); // despierta helicópteros y personas en espera
+    }
+
+    void subirse() {
+        while (!helipuertoOcupado || especialEnPlataforma || pasajerosSubidos >= capacidadActual) {
+            wait();
+        }
+        pasajerosSubidos++;
+    }
+
+    void descenderE() {
+        helicosEspecialesEsperando++;
+        while (helipuertoOcupado) { 
+            wait();
+        }
+        helicosEspecialesEsperando--;
+        helipuertoOcupado = true;
+        especialEnPlataforma = true;
+        notifyAll();
+    }
+
+    void despegarE() {
+        helipuertoOcupado = false;
+        especialEnPlataforma = false;
+        notifyAll(); 
+    }
+
+    void subirseE() {
+        while (!helipuertoOcupado || !especialEnPlataforma) {
+            wait();
+        }
+    }
+}

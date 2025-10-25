@@ -1,0 +1,145 @@
+A)
+
+Monitor Recurso{
+    int comida=0;
+    int oro = 0;
+    int madera=0;
+    int piedra=0;
+
+    bool bloqueadoPiedra = false;
+    bool bloqueadoOro = false;
+    bool bloqueadoCaza = false;
+    bool bloqueadoMadera = false;
+
+
+    public void comenzar(Taskt t){
+        int tipo = t.getTipo();
+
+        while(estaBloqueada(tipo)){
+            wait();
+        }
+    }
+
+    public void finalizar(Task t){
+        int tipo = t.getTipo(); // 0 piedra, 1 oro, 2 caza, 3 madera
+
+        while(estaBloqueada(tipo)){
+            wait();
+        }
+
+        if(tipo == 0) piedra += t.getRecurso(); 
+        if(tipo == 1) oro    += t.getRecurso();
+        if(tipo == 2) comida += t.getRecurso();
+        if(tipo == 3) madera += t.getRecurso();
+    }
+
+    public void activarAlarma(int tipo){
+        setBloqueo(tipo, true);
+    }
+
+    public void desactivarAlarma(int tipo){
+        setBloqueo(tipo,false);
+        notifyAll();
+    }
+
+    public int[] obtenerRecursos() {
+        return [comida, oro, madera, piedra]
+    }
+
+    private bool estaBloqueada(int tipo) {
+        if (tipo == 0) return bloqueadoPiedra;
+        if (tipo == 1) return bloqueadoOro;
+        if (tipo == 2) return bloqueadoCaza;
+        return bloqueadoMadera;
+    }
+
+    private void setBloqueo(int t, bool v) {
+        if (t == 0) bloqueadoPiedra = v;
+        if (t == 1) bloqueadoOro = v;
+        if (t == 2) bloqueadoCaza = v;
+        if (t == 3) bloqueadoMadera = v;
+    }
+}
+
+        ======================================================================
+b)
+monitor ResourceManager {
+
+    int comida = 0;
+    int oro = 0;
+    int madera = 0;
+    int piedra = 0;
+
+    bool bloqueadoPiedra = false;
+    bool bloqueadoOro = false;
+    bool bloqueadoCaza = false;
+    bool bloqueadoMadera = false;
+
+    int superTrabajando = 0;
+    int K; // umbral comida para super aldeano
+    int L; // umbral super trabajando para bloquear aldeanos comunes
+
+    public void comenzar(Task t, bool esSuper) {
+        int tipo = t.getTipo();
+
+        if (!esSuper) {
+            // Aldeano común debe esperar en dos casos:
+            while (estaBloqueada(tipo) || superTrabajando > L) {
+                wait();
+            }
+        } else {
+            // Super Aldeano ignora alarmas, pero depende de comida
+            while (comida <= K) {
+                wait();
+            }
+            superTrabajando++;
+        }
+    }
+
+    public void finalizar(Task t, bool esSuper) {
+        int tipo = t.getTipo();
+
+        if (!esSuper) {
+            while (estaBloqueada(tipo)) {
+                wait();
+            }
+        } else {
+            superTrabajando--;
+        }
+
+        // Actualizar recursos
+        if (tipo == 0) piedra += t.getRecurso();
+        if (tipo == 1) oro += t.getRecurso();
+        if (tipo == 2) comida += t.getRecurso();
+        if (tipo == 3) madera += t.getRecurso();
+
+        notifyAll();
+    }
+
+    public void activarAlarma(int tipo) {
+        setBloqueo(tipo, true);
+    }
+
+    public  void desactivarAlarma(int tipo) {
+        setBloqueo(tipo, false);
+        notifyAll();
+    }
+
+    public int[] obtenerRecursos() {
+        return [comida, oro, madera, piedra];
+    }
+
+    private bool estaBloqueada(int tipo) {
+        if (tipo == 0) return bloqueadoPiedra;
+        if (tipo == 1) return bloqueadoOro;
+        if (tipo == 2) return bloqueadoCaza;
+        return bloqueadoMadera;
+    }
+
+    private void setBloqueo(int t, bool v) {
+        if (t == 0) bloqueadoPiedra = v;
+        if (t == 1) bloqueadoOro = v;
+        if (t == 2) bloqueadoCaza = v;
+        if (t == 3) bloqueadoMadera = v;
+    }
+}

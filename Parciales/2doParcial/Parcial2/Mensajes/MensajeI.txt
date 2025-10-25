@@ -1,0 +1,179 @@
+A)
+global Channel solicitudes = new Channel();
+
+class Request {
+    String tipo;                        // "login", "certficar", "logout"
+    Int id;                             // id usuario
+    Documento doc;                      // doc a certificar
+    String tipoClave;                   // temporal o principal
+    Channel response;                   // canal del user para recibir respuesta
+}
+
+class Sesion {
+    Int idUsuario;
+    String claveTemporal;
+    Channel cRespuesta;
+}
+
+
+process ServidorFirmas {
+    Clave clavePrincipal= generar_clave();
+    List sesionesActivas =  new List();         // [sesion1, sesion2...] => [(idUser, clavetemporal, canalResponse)]
+
+    function buscarSesion(id){
+        for s in sesionesActivas {
+            if(s.idUsuario == id) return s;
+        
+        return null
+        }
+    }
+
+    procedure manejarLogin(req) {
+        if(validar(req.id)){
+            Clave claveTemp = generar_clave();
+
+            Sesion sesion = new Sesion();
+            sesion.idUsuario=req.id;
+            sesion.claveTemporal = claveTemp;
+            sesion.cRespuesta = req.response;
+
+            sesionesActivas.add(sesion);
+            req.response.send("login exitoso!");
+        }else{
+            req.response.send("login invalido");
+        }
+    }
+
+    procedure manejarCertificacion(req){
+        sesion = buscarSesion(req.id);
+        if(sesion ==  null){
+            req.response.send("Error: usuario no logueado");
+            return;
+        }
+
+        if (req.tipoClave == "principal"){
+            Documento cert = certificar_digitalmente(req.doc, clavePrincipal);
+            req.response.send(cert);
+        }else if (req.tipoClave== "temporal"){
+            Documento cert = certificar_digitalmente(req.doc, sesion.claveTemporal);
+            req.response.send(cert);
+        }else {
+            req.response.send("El tipo de clave es inválido");
+        }
+    } 
+
+    procedure manejarLogOut(req){
+        sesion= buscarSesion(req.id);
+
+        if(sesion !=null){
+            sesionesActivas.remove(sesion);
+            req.response.send("Sesion finalizada");
+        }else {
+            req.response.send("Sesion inexistente");
+        }
+    }
+
+
+
+    while (true){
+        Request req= solicitudes.receive();
+
+        switch (req.tipo){
+            case "login" -> manejarLogin(req);
+            case "certificar" -> manejarCertificacion(req);
+            case "logout" -> manejarLogout(req);
+            default -> req.response.send("Tipo de pedido desconocido.");
+        }
+    }
+
+}
+
+            ====================================================
+
+B)
+global Channel solicitudes = new Channel();
+
+class Request {
+    String tipo;                        // "login", "certficar", "logout"
+    Int id;                             // id usuario
+    Documento doc;                      // doc a certificar
+    String tipoClave;                   // temporal o principal
+    Channel response;                   // canal del user para recibir respuesta
+}
+
+class Sesion {
+    Int idUsuario;
+    String claveTemporal;
+    Channel cRespuesta;
+}
+
+
+process ServidorFirmas {
+    Clave clavePrincipal = generar_clave();
+    List<Sesion> sesionesActivas = new List<Sesion>();
+
+    function buscarSesion(id) {
+        for s in sesionesActivas {
+            if (s.idUsuario == id) return s;
+        }
+        return null;
+    }
+
+    procedure manejarLogin(req) {
+        if (validar(req.id)) {
+            Clave claveTemp = generar_clave();
+            Sesion s = new Sesion();
+            s.idUsuario = req.id;
+            s.claveTemporal = claveTemp;
+            s.cRespuesta = req.response;
+            sesionesActivas.add(s);
+            req.response.send("Login exitoso!");
+        } else {
+            req.response.send("Login inválido");
+        }
+    }
+
+    procedure manejarCertificacion(req) {
+        Sesion s = buscarSesion(req.id);
+        if (s == null) {
+            req.response.send("Error: usuario no logueado");
+            return;
+        }
+        if (req.tipoClave == "principal") {
+            Documento cert = certificar_digitalmente(req.doc, clavePrincipal);
+            req.response.send(cert);
+        } else if (req.tipoClave == "temporal") {
+            Documento cert = certificar_digitalmente(req.doc, s.claveTemporal);
+            req.response.send(cert);
+        } else {
+            req.response.send("Tipo de clave inválido");
+        }
+    }
+
+    procedure manejarLogout(req) {
+        Sesion s = buscarSesion(req.id);
+        if (s != null) {
+            sesionesActivas.remove(s);
+            req.response.send("Sesión finalizada");
+        } else {
+            req.response.send("Sesión inexistente");
+        }
+    }
+
+    procedure manejarActualizacion(req) {
+        clavePrincipal = generar_clave();
+        req.response.send("Clave principal actualizada correctamente");
+    }
+
+    while (true) {
+        Request req = solicitudes.receive();
+
+        switch (req.tipo) {
+            case "login": manejarLogin(req); break;
+            case "certificar": manejarCertificacion(req); break;
+            case "logout": manejarLogout(req); break;
+            case "actualizarClavePrincipal": manejarActualizacion(req); break;
+            default: req.response.send("Tipo de pedido desconocido."); break;
+        }
+    }
+}

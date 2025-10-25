@@ -1,0 +1,102 @@
+
+
+Monitor Juego {
+    int N;
+    int conectados=0;
+    bool jugando=false;
+
+
+    void conectarse(){
+        while(conectados == N){
+            wait();
+        }
+        conectados++;
+
+        if(conectados == N){
+            notifyAll();
+        }
+    }
+
+    void desconectarse(){
+        conectados--;
+        if (conectados == 0){
+            notifyAll();
+        }
+    }
+
+    void iniciarJuego(){
+        while(conectados < N) {
+            wait();
+        }
+        jugando= true;
+    }
+
+    void finalizarJuego(){
+        while(conectados >0){
+            wait();
+        }
+        jugando= false;
+        notifyAll();
+    }
+}
+
+                    ===============================================
+
+b)
+
+Monitor Juego {
+    int N;
+    int conectados   = 0;
+    bool jugando     = false;
+    int esperandoVIP = 0;
+    int esperandoCom = 0;
+
+
+    void conectarse(bool esVIP){
+        if(esVIP){
+            esperandoVIP ++;
+
+            while(conectados == N){
+                wait();
+            }
+
+            esperandoVIP--;
+            conectados++;
+        }else{
+            esperandoCom++;
+
+            while(conectados == N || esperandoVIP > 0){
+                wait();
+            }
+
+            esperandoCom--;
+            conectados++;
+        }
+
+        if (conectados == N) {
+            notifyAll();
+        }
+    }
+
+    void desconectarse(){
+        conectados--;
+        if (conectados == 0){
+            notifyAll();
+        }
+    }
+
+    void iniciarJuego(){
+        while(conectados < N) {
+            wait();
+        }
+        jugando= true;
+    }
+
+    void finalizarJuego(){
+        while(conectados >0){
+            wait();
+        }
+        jugando= false;
+        notifyAll();
+    }
+}

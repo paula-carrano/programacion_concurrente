@@ -1,0 +1,154 @@
+A)
+
+global Channel pedidos = new Channel();
+
+class Request {
+    String tipo;
+    Product p;
+    Carrito c;
+    Channel respuesta;
+}
+
+process Servidor {
+    while(true){
+        Request pedido = pedidos.receive();
+
+        thread(pedido){
+            if (pedido.tipo == "Agregar"){
+                if (hayStock(pedido.p)){
+                    pedido.respuesta.send("Producto agregado")
+                }else{
+                    pedido.respuesta.send("No hay stock disponible")
+                }
+            }else if (pedido.tipo == "Confirmar"){
+                String resumen = validar_compra(pedido.c)
+                pedido.respuesta.send(resumen)
+            }else if(pedido.tipo == "terminado"){
+                pedido.respuesta.send("Fin de la comunicación")
+            }
+        }
+    }
+}
+
+//EJEMPLO DE CLIENTE
+process Cliente {
+    Channel cResponse = new Channel();
+    Request req;
+
+    req = new Request;
+    req.tipo = "agregar";
+    req.p= "p1";
+    req.respuesta = cResponse;
+    pedidos.send(req);
+
+    print(cResp.receive());
+}
+
+                    =====================================================================================================================
+B)
+
+
+global Channel pedidos = new Channel();
+global int cantidadClientesConectados=0;
+global int M;
+
+
+class Request {
+    String tipo;
+    Product p;
+    Carrito c;
+    Channel respuesta;
+}
+
+process Servidor {
+    while(true){
+        Request pedido = pedidos.receive();
+
+        thread(pedido){
+            if (pedido.tipo == "Agregar" || pedido.tipo == "Confirmar"){
+                    ++cantidadClientesConectados;
+                    if (cantidadClientesConectados > M){
+                        print("Hay conectados" + cantidadClientesConectados + ". Superaste la cantidad maxima" + M + "clientes conectados")
+                    }
+            }
+
+            if (pedido.tipo == "Agregar" ){
+                if (hayStock(pedido.p)){
+                    pedido.respuesta.send("Producto agregado")
+                }else{
+                    pedido.respuesta.send("No hay stock disponible")
+                }
+            }else if (pedido.tipo == "confirmar"){
+                String resumen = validar_compra(pedido.c)
+                pedido.respuesta.send(resumen)
+            }else if(pedido.tipo == "terminado"){
+                --cantidadClientesConectados;
+                pedido.respuesta.send("Fin de la comunicación")
+            }
+        }
+    }
+}
+
+                    =====================================================================================================================
+
+c)
+
+global Channel pedidos = new Channel();
+global int cantidadClientesConectados=0;
+global List sesionesActivas = new List();
+global int M;
+global int N;
+
+
+class Request {
+    String tipo;
+    Product p;
+    Carrito c;
+    Channel respuesta;
+}
+
+process Servidor {
+    while(true){
+        Request pedido = pedidos.receive();
+
+        thread(pedido){
+            if (pedido.tipo == "Agregar" || pedido.tipo == "Confirmar"){
+
+                    if (!sesionesActivas.contains(req.respuesta)) {
+                        sesionesActivas.add(req.respuesta);
+                        ++ cantidadClientesConectados;
+                    }
+
+                    
+                    if (cantidadClientesConectados > M){
+                        print("Hay conectados" + cantidadClientesConectados + ". Superaste la cantidad maxima" + M + "clientes conectados")
+                        caducarSesiones();
+                    }
+            }
+
+            if (pedido.tipo == "Agregar" ){
+                if (hayStock(pedido.p)){
+                    pedido.respuesta.send("Producto agregado")
+                }else{
+                    pedido.respuesta.send("No hay stock disponible")
+                }
+            }else if (pedido.tipo == "confirmar"){
+                String resumen = validar_compra(pedido.c)
+                pedido.respuesta.send(resumen)
+            }else if(pedido.tipo == "terminado"){
+                sesionesActivas.remove(pedido.respuesta);
+                --cantidadClientesConectados;
+                pedido.respuesta.send("Fin de la comunicación")
+            }
+        }
+    }
+}
+
+caducarSesiones() {
+    for (i=1 to N){
+        Channel c = randomChoice(sesionesActivas);
+        c.send("Sesión finalizada por sobrecarga");
+        sesionesActivas.remove(c);
+        --cantidadClientesConectados;
+    }
+}

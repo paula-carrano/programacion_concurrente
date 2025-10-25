@@ -1,0 +1,121 @@
+monitor Autodromo{
+    int particularesEnPista= 0;
+    int kartingsEnPista    = 0;
+    int kartingsEsperando  = 0;
+
+
+    void entrarParticular(){
+        while(kartingsEnPista > 0 || kartingsEsperando >0){
+            wait();
+        }
+        particularesEnPista++;
+    }
+
+    void salirParticular(){
+        particularesEnPista--;
+        if (particularesEnPista == 0){
+            notifyAll();                        //libero kartingsEsperando o particulares
+        }
+    }
+
+
+    void entrarKarting(){
+        kartingsEsperando++;
+
+        while(particularesEnPista>0 || kartingsEnPista > 0){ //entra si no hay nadie en pista
+            wait();
+        }
+        kartingsEsperando--;
+        kartingsEnPista++;
+    }
+
+    void salirKarting(){
+        kartingsEnPista--;
+        if(kartingsEnPista == 0){
+            notifyAll();                             //libero kartingsEsperando o particulares   
+        }
+    }
+}
+
+            ================================================================================
+b)
+
+monitor Autodromo {
+    int particularesEnPista = 0;
+    int kartingsEnPista = 0;
+    int kartingsEsperando = 0;
+
+
+    void entrarParticular() {
+        while (kartingsEnPista > 0 || kartingsEsperando > 0 || particularesEnPista >= 20) {
+            wait();
+        }
+        particularesEnPista++;
+    }
+
+    void salirParticular() {
+        particularesEnPista--;
+        notifyAll();
+    }
+
+    void entrarKarting() {
+        kartingsEsperando++;
+        while (particularesEnPista > 0 || kartingsEnPista > 0) {
+            wait();
+        }
+        kartingsEsperando--;
+        kartingsEnPista++;
+    }
+
+    void salirKarting() {
+        kartingsEnPista--;
+        notifyAll();
+    }
+}
+            ================================================================================
+c)
+
+monitor Autodromo {
+    int particularesEnPista = 0;
+    int kartingsEnPista = 0;
+    int kartingsEsperando = 0;
+    int kartingsConRankingAltoEsperando = 0;
+    int umbralRanking;
+
+
+    void entrarParticular() {
+        while (kartingsEnPista > 0 || kartingsEsperando > 0 || particularesEnPista >= 20) {
+            wait();
+        }
+        particularesEnPista++;
+    }
+
+    void salirParticular() {
+        particularesEnPista--;
+        notifyAll();
+    }
+
+    void entrarKarting(int ranking) {
+        kartingsEsperando++;
+        if(ranking >= umbralRanking){
+            kartingsConRankingAltoEsperando++;
+        }
+
+        while (particularesEnPista > 0 || kartingsEnPista > 0 || (ranking < umbralRanking && kartingsConRankingAltoEsperando > 0)) {
+            wait();
+        }
+
+        kartingsEsperando--;
+        
+        if(ranking >= umbralRanking){
+            kartingsConRankingAltoEsperando--;
+        }
+
+        kartingsEnPista++;
+    }
+
+    void salirKarting() {
+        kartingsEnPista--;
+        notifyAll();
+    }
+}

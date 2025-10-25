@@ -1,0 +1,76 @@
+
+
+class JugadorRequest{
+    String nickname;
+    String action;
+    Channel response;
+}
+
+global Channel servidor = new Channel();
+
+process Jugador{
+
+    print("Ingrese su nickname");
+    String nickname = input();
+
+    Channel miCanal = new Channel();
+    
+    servidor.send(new JugadorRequest{nickname=nickname, response = miCanal});
+
+    while(true){
+        Estado estadoActual = miCanal.receive();
+
+        print("Estado actual del mundo:");
+        print (estadoActual);
+
+        print("Ingrese su acción ó salir para abandonar");
+        String action = input();
+
+        servidor.send(new JugadorRequest{nickname=nickname, action = action});
+
+        if(action == "salir"){
+            print ("Saliendo de la partida");
+            break;
+        }
+    }
+}
+
+        ==================================================
+b)
+Mantengo las globales y clases anteriores.
+
+
+process Servidor(){
+    Estado mundo = iniciarMundo();
+    HashMap<String, Channel> jugadoresActivos = new HashMap<>();
+    List<(String,String)> jugadas = new List<>();
+
+    while(true){
+        JugadorRequest req = servidor.receive();
+
+        if (req.action == null){
+            jugadoresActivos[req.nickname] =req.response;  // se une uno nuevo a la partida
+        }else {
+            jugadas.add((req.nickname, req.action));        // registro la jugada de los que estana dentro
+        }
+
+        if (jugadas.size() == jugadoresActivos.size()){
+            mundo = nuevoEstado(mundo,jugadas);
+
+            for(jdr in jugadoresActivos){   //envio actualización a todos
+                String nick= jdr.key;
+                Channel c = jdr.value;
+                c.send(mundo);
+            }
+
+            for (jda in jugadas){
+                if(jda.second.toLoweCase() == "salir"){
+                    jugadoresActivos.remove(jda.firt);
+                }
+            }
+
+            jugadas.clear();
+        }
+    }
+
+}

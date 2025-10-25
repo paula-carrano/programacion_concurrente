@@ -1,0 +1,145 @@
+a)
+process Nodo(List<Channel> vecinos, Channel canalEntrada, Channel canalTimer, Int r){
+    int uid;
+    int max_uid;
+    int rondasRestantes;
+    bool lider;
+
+    while(true){
+
+        String evento=canalTimer.receive();
+    
+        switch(evento){
+            case "inicio":
+                uid = random();
+                max_uid= uid;
+                rondasRestantes = r;
+                lider = false;
+                break;
+
+            case "ronda":
+                for (c in vecinos){
+                     c.send(max_uid);   
+                }
+                for(i=0; i < vecinos.size(); i++){
+                    Int recibido= canalEntrada.receive();
+                    if(recibido > max_uid) max_uid = recibido;
+                }
+                rondasRestantes--;
+                break;
+
+            case "fin":
+                if(max_uid == uid)  {
+                    lider= true;
+                    print("Soy el lider");
+                }else {
+                    lider=false;
+                    print("No soy lider. El lider es"+ max_uid)
+                }
+                break;
+
+            default:
+                print("evento desconocido");
+                break;
+        }
+    }
+}
+
+            =====================================================
+b)
+
+class NodoRegistro {
+    Channel canalTimer;
+}
+
+process Timer (int diametro, int frecuencia, Channel CRegistro) {
+    List<NodoRegistro> nodos = new List<NodoRegistro>();
+    Int contadorRondas=0;
+
+    thread(){
+        while(true){
+            NodoRegistro nuevoNodo= CRegistro.receive();
+            nodos.add(nuevoNodo);
+
+            if(nodo.size() %10 == 0){
+                thread(){
+                    iniciarEleccion(nodos,diametro,frecuencia)
+                }
+            }
+        }
+    }
+}
+
+procedure iniciarEleccion(List<NodoRegistro> nodos, Int diametro, Int frecuencia){
+
+    //aviso de inicio
+    for (n in nodos){
+        n.canalTimer.send("inicio")
+    }
+
+    // ejecutar rondas
+    for(int r=0; r < diametro; r++){
+        sleep(frecuencia);
+        for (n in nodos){
+            n.canalTimer.send("ronda");
+        }
+    }
+
+    //aviso de fin
+    for (n in nodos){
+        n.canalTimer.send("fin")
+    }
+}
+
+
+            =====================================================
+c)
+
+
+class ClienteRequest {
+    Int idPedido;
+    Channel response;   
+}
+
+class NodoRequest {
+    ClienteRequest pedido;
+    Channel canalNodo;
+}
+
+process Timer(Int diametro, Int frecuencia, Channel canalRegistro, Channel canalCliente){
+    List<NodoRegistro> nodos = new List<NodoRegistro>();
+
+    // Registro de nodos concurrente
+    thread(){
+        while(true){
+            NodoRegistro nuevoNodo = canalRegistro.receive();
+            nodos.add(nuevoNodo);
+
+            if(nodos.size() % 10 == 0){
+                thread(){ iniciarEleccion(nodos, diametro, frecuencia); }
+            }
+        }
+    }
+
+    // Atención de clientes concurrente
+    thread(){
+        while(true){
+            ClienteRequest pedido = canalCliente.receive(); 
+            thread(pedido){  // procesar cada pedido en un hilo independiente
+                boolean procesado = false;
+
+                // Enviar la petición a todos los nodos hasta que un líder responda
+                while(!procesado){
+                    for(n in nodos){
+                        n.canalTimer.send(new NodoRequest{pedido = pedido, canalNodo = n.canalTimer});
+                    }
+
+                    // El líder responderá directamente al Timer
+                    NodoRequest resultado = canalCliente.receive();
+                    pedido.response.send(resultado); 
+                    procesado = true;
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,106 @@
+
+A)
+global Channel solicitudes = new Channel();
+
+Class Request{
+    String tipo;                //"Crear sala", "unirseASala", "enviarMensaje"
+    Int salaId;
+    String userId;
+    String message;
+    Channel response;
+}
+
+Class Sala {
+    int id;
+    Channel canal;
+}
+
+
+process Server {
+    List<Sala> salas 0 new List<Sala>;
+    int K;
+    int siguienteId=1;
+
+
+    function buscarSala(id){
+        for(s in salas){
+            if (s.id == id) return s
+        }
+        return null;
+    }
+
+
+    while(true){
+        Request req = solicitudes.receive();
+
+        case "crearSala":
+            if(salas.size() >= K){
+                req.response.send("No se pueden crear más salas")
+            }else{
+                Sala nueva = new Sala();
+                nueva.id=siguienteId++;
+                nueva.canal = new Channel();
+
+                salas.add(nueva);
+                req.response.send(nueva.canal);
+            }break;
+        
+        case "unirseASala":
+            Sala s = buscarSala(req.salaId);
+
+            if(s != null){
+                req.response.send(s.canal);
+            }else{
+                req.response.send("Sala inexistente");
+            }break;
+
+        case "enviarMensaje":
+            Sala s2= buscarSala(req.salaId);
+
+            if(s2 !=null ){
+                s2.canal.send(req.userId + ":" + req.message)
+            }else{
+                req.response.send("sala inexistente");
+            }break;
+
+        default:
+            req.response.send("Tipo de request desconocido")
+            break;
+    }
+}
+
+            =======================================================================
+B)
+
+process Usuario(String nombre) {
+    Channel miCanal = new Channel();
+
+    //CREAR SALA
+    Request r = new Request();
+    r.tipo = "crearSala";
+    r.userId = nombre;
+    r.response = miCanal;
+    solicitudes.send(r)
+
+    Channel sala = miCanal.receive();
+
+    //recibir mensajes
+    thread(){
+        while(true){
+            String msg = sala.receive();
+            print("[" + nombre + "] " + msg);
+        }
+    }
+
+    while(true){
+        String texto= input();
+        Request rq = new Request();
+        rq.tipo="enviarMensaje";
+        rq.salaId = 1;
+        rq.userId = nombre;
+        rq.message = texto;
+        rq.response =miCanal;
+
+        solicitudes.send(rq);
+    }
+}
